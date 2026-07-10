@@ -14,6 +14,8 @@ const severityData = [
 function App() {
   const [incidentText, setIncidentText] = useState('');
   const [incidents, setIncidents] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
@@ -27,12 +29,17 @@ function App() {
 
   const handleSubmit = async () => {
     if (!incidentText.trim()) return;
+    setSubmitting(true);
+    setErrorMsg('');
     try {
       await axios.post('http://127.0.0.1:8000/api/incidents', { text: incidentText });
       setIncidentText('');
       fetchIncidents();
     } catch (err) {
       console.error('Failed to submit incident:', err);
+      setErrorMsg('Failed to submit incident. Is the backend running?');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -65,8 +72,12 @@ function App() {
             onChange={(e) => setIncidentText(e.target.value)}
             placeholder="Paste incident email or describe the issue..."
             rows={6}
+            disabled={submitting}
           />
-          <button onClick={handleSubmit}>Analyze Incident</button>
+          <button onClick={handleSubmit} disabled={submitting}>
+            {submitting ? 'Analyzing...' : 'Analyze Incident'}
+          </button>
+          {errorMsg && <p style={{ color: '#ef4444', marginTop: '8px' }}>{errorMsg}</p>}
         </div>
 
         <div className="panel">
