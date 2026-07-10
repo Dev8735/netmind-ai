@@ -15,15 +15,25 @@ function App() {
   const [incidentText, setIncidentText] = useState('');
   const [incidents, setIncidents] = useState([]);
 
-  useEffect(() => {
+  const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
       .then(res => setIncidents(res.data))
       .catch(err => console.error('Failed to fetch incidents:', err));
+  };
+
+  useEffect(() => {
+    fetchIncidents();
   }, []);
 
-  const handleSubmit = () => {
-    alert(`Will send to backend: "${incidentText}"`);
-    setIncidentText('');
+  const handleSubmit = async () => {
+    if (!incidentText.trim()) return;
+    try {
+      await axios.post('http://127.0.0.1:8000/api/incidents', { text: incidentText });
+      setIncidentText('');
+      fetchIncidents();
+    } catch (err) {
+      console.error('Failed to submit incident:', err);
+    }
   };
 
   return (
