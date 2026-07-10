@@ -1,13 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { AlertCircle, CheckCircle, Clock, Server } from 'lucide-react';
 import './App.css';
-
-const mockIncidents = [
-  { id: 1, device: 'Core-Switch-01', issue: 'No ping response', severity: 'Critical', status: 'Open' },
-  { id: 2, device: 'Router-Branch-02', issue: 'High CPU usage', severity: 'High', status: 'In Progress' },
-  { id: 3, device: 'AP-Floor3-05', issue: 'Intermittent drops', severity: 'Medium', status: 'Resolved' },
-];
 
 const severityData = [
   { name: 'Critical', value: 1, color: '#ef4444' },
@@ -18,7 +13,13 @@ const severityData = [
 
 function App() {
   const [incidentText, setIncidentText] = useState('');
-  const [incidents] = useState(mockIncidents);
+  const [incidents, setIncidents] = useState([]);
+
+  useEffect(() => {
+    axios.get('http://127.0.0.1:8000/api/incidents')
+      .then(res => setIncidents(res.data))
+      .catch(err => console.error('Failed to fetch incidents:', err));
+  }, []);
 
   const handleSubmit = () => {
     alert(`Will send to backend: "${incidentText}"`);
