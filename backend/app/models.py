@@ -13,6 +13,7 @@ class Incident(Base):
     priority = Column(String)
     symptoms = Column(Text)
     status = Column(String, default="Open")
+    diagnosis_json = Column(Text)  # <-- ADD THIS LINE
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class KnowledgeBase(Base):
