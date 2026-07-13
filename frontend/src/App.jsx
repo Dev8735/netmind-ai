@@ -169,7 +169,15 @@ function App() {
             ) : (
               <p>No confident match found in knowledge base — needs manual review.</p>
             )}
+            <div className="report-section">
 
+                href={`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/report`}
+                className="download-btn"
+                download
+            >
+    Download PDF Report
+  </a>
+</div>
             <div className="alert-section">
               <h3>Admin Alert</h3>
               {!alertText ? (

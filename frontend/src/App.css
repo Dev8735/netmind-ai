@@ -42,3 +42,9 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
 }
 .copy-btn { display: flex; align-items: center; gap: 6px; margin-top: 10px; background: #334155; }
 .copy-btn:hover { background: #475569; }
+.report-section { margin-top: 16px; }
+.download-btn {
+  display: inline-block; background: #22c55e; color: white; padding: 10px 18px;
+  border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;
+}
+.download-btn:hover { background: #16a34a; }
