@@ -1,12 +1,15 @@
 import json
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
 from .models import engine, Incident
 from .nlp_parser import parse_incident
 from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
+from .report_generator import generate_pdf_report
 
 app = FastAPI(title="NetMind AI")
 
@@ -72,6 +75,24 @@ def get_incident_alert(incident_id: int):
     diagnosis = json.loads(incident.diagnosis_json) if incident.diagnosis_json else None
     alert_text = generate_alert(incident.device_type, incident.incident_description, diagnosis)
     return {"alert": alert_text}
+
+
+@app.get("/api/incidents/{incident_id}/report")
+def download_report(incident_id: int):
+    session = Session()
+    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    session.close()
+    if not incident:
+        return {"error": "Not found"}
+
+    diagnosis = json.loads(incident.diagnosis_json) if incident.diagnosis_json else None
+    alert_text = generate_alert(incident.device_type, incident.incident_description, diagnosis)
+
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "reports")
+    filepath = generate_pdf_report(incident, diagnosis, alert_text, output_dir)
+
+    return FileResponse(filepath, media_type='application/pdf',
+                         filename=f"NetMind_Report_Incident_{incident_id}.pdf")
 
 
 @app.post("/api/incidents")

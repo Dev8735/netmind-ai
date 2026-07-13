@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { AlertCircle, CheckCircle, Clock, Server, X, Copy } from 'lucide-react';
+import Topology from './Topology';
 import './App.css';
 
 const severityData = [
@@ -150,6 +151,9 @@ function App() {
             <button className="modal-close" onClick={() => setSelectedDetail(null)}><X size={18} /></button>
             <h2>{selectedDetail.device} — {selectedDetail.severity}</h2>
             <p className="modal-issue">{selectedDetail.issue}</p>
+
+            <h3>Network Topology</h3>
+            <Topology affectedDevice={selectedDetail.device} />
 
             {selectedDetail.diagnosis && selectedDetail.diagnosis.matched ? (
               <>
