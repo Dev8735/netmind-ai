@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
 from .models import engine, Incident
+from .nlp_parser import parse_incident
 
 app = FastAPI(title="NetMind AI")
 
@@ -42,17 +43,19 @@ def get_incidents():
 
 @app.post("/api/incidents")
 def create_incident(payload: IncidentCreate):
+    parsed = parse_incident(payload.text)
+
     session = Session()
     new_incident = Incident(
-        device_type="Unknown",
+        device_type=parsed["device"],
         incident_description=payload.text,
-        category="Uncategorized",
+        category=parsed["category"],
         priority="Medium",
-        symptoms="",
+        symptoms=", ".join(parsed["keywords"][:5]),
         status="Open"
     )
     session.add(new_incident)
     session.commit()
     session.refresh(new_incident)
     session.close()
-    return {"id": new_incident.id, "message": "Incident created"}
+    return {"id": new_incident.id, "message": "Incident created", "parsed": parsed}

@@ -1,0 +1,26 @@
+incident_description,symptoms,possible_cause,probability,verification_command,troubleshooting_steps,severity,business_impact
+Switch not responding to ping,No ping response; LEDs off,Power failure,70,show interface status,Check power cable and PSU; power cycle the switch,Critical,Complete site outage
+Switch not responding to ping,No ping response; LEDs off,Hardware fault,20,show environment,Check hardware diagnostics LEDs; replace if faulty,Critical,Complete site outage
+Switch not responding to ping,No ping response; LEDs off,Cable disconnected,10,show interface status,Verify physical cable connection,Critical,Complete site outage
+Router high CPU usage,Slow routing; high latency,Routing loop,40,show processes cpu,Check routing table for loops; clear route cache,High,Degraded network performance
+Router high CPU usage,Slow routing; high latency,DoS/traffic flood,35,show ip traffic,Check traffic patterns; apply rate limiting,High,Degraded network performance
+Router high CPU usage,Slow routing; high latency,Misconfigured ACL,25,show access-lists,Review and optimize access control lists,High,Degraded network performance
+Access point intermittent drops,Wifi disconnects randomly,Channel interference,50,show wireless statistics,Change wifi channel; check for interference sources,Medium,Reduced wifi coverage
+Access point intermittent drops,Wifi disconnects randomly,Firmware bug,30,show version,Update AP firmware to latest stable version,Medium,Reduced wifi coverage
+Access point intermittent drops,Wifi disconnects randomly,Overloaded AP,20,show wireless clients,Check client count; consider load balancing across APs,Medium,Reduced wifi coverage
+Port flapping on switch,Interface up/down repeatedly in logs,Faulty cable,45,show interface status,Replace network cable; test with known-good cable,High,Intermittent connectivity loss
+Port flapping on switch,Interface up/down repeatedly in logs,Duplex mismatch,30,show interface duplex,Match duplex settings on both ends,High,Intermittent connectivity loss
+Port flapping on switch,Interface up/down repeatedly in logs,Faulty SFP module,25,show interface transceiver,Replace SFP/transceiver module,High,Intermittent connectivity loss
+BGP session down,BGP neighbor unreachable,Physical link failure,40,show ip bgp summary,Check physical connectivity to neighbor,Critical,WAN connectivity loss
+BGP session down,BGP neighbor unreachable,Authentication mismatch,35,show ip bgp neighbors,Verify BGP authentication keys match,Critical,WAN connectivity loss
+BGP session down,BGP neighbor unreachable,ACL blocking BGP port,25,show access-lists,Check ACLs allow TCP 179,Critical,WAN connectivity loss
+DHCP exhaustion,Clients not receiving IP address,DHCP pool exhausted,60,show ip dhcp pool,Expand DHCP scope or reduce lease time,High,New devices cannot connect
+DHCP exhaustion,Clients not receiving IP address,DHCP server down,25,show ip dhcp server,Restart DHCP service; check server status,High,New devices cannot connect
+DHCP exhaustion,Clients not receiving IP address,Rogue DHCP server,15,show ip dhcp conflict,Identify and disable rogue DHCP server,High,New devices cannot connect
+Firewall blocking legitimate traffic,Users report access denied,Overly restrictive rule,55,show firewall rules,Review and adjust firewall rule set,Medium,Business application inaccessible
+Firewall blocking legitimate traffic,Users report access denied,Recently changed policy,30,show firewall log,Check recent policy changes; rollback if needed,Medium,Business application inaccessible
+Firewall blocking legitimate traffic,Users report access denied,NAT misconfiguration,15,show nat translations,Verify NAT rules are correctly mapped,Medium,Business application inaccessible
+VPN tunnel down,Remote site cannot connect,IKE phase mismatch,45,show crypto isakmp sa,Verify IKE/IPsec parameters match on both ends,High,Remote site disconnected
+VPN tunnel down,Remote site cannot connect,Interesting traffic not matched,30,show crypto ipsec sa,Review and correct traffic selectors/ACLs,High,Remote site disconnected
+VPN tunnel down,Remote site cannot connect,ISP link down,25,show interface status,Check WAN interface and ISP connectivity,High,Remote site disconnected
+Switch high memory usage,Sluggish management access; possible crash risk,Memory leak from software bug,50,show processes memory,Upgrade to stable IOS/firmware version,Medium,Risk of device crash
