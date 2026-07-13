@@ -80,7 +80,7 @@ function App() {
   return (
     <div className="dashboard">
       <header className="topbar">
-        <h1><Server size={24} /> NetMind AI — Network Fault Diagnosis Assistant</h1>
+        <h1><Server size={24} /> NetMind AI - Network Fault Diagnosis Assistant</h1>
       </header>
 
       <section className="summary-cards">
@@ -149,14 +149,14 @@ function App() {
         <div className="modal-overlay" onClick={() => setSelectedDetail(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setSelectedDetail(null)}><X size={18} /></button>
-            <h2>{selectedDetail.device} — {selectedDetail.severity}</h2>
+            <h2>{selectedDetail.device} - {selectedDetail.severity}</h2>
             <p className="modal-issue">{selectedDetail.issue}</p>
 
             <h3>Network Topology</h3>
             <Topology affectedDevice={selectedDetail.device} />
 
             {selectedDetail.diagnosis && selectedDetail.diagnosis.matched ? (
-              <>
+              <div>
                 <h3>Ranked Possible Causes</h3>
                 {selectedDetail.diagnosis.causes.map((c, idx) => (
                   <div key={idx} className="cause-block">
@@ -165,19 +165,21 @@ function App() {
                     <p className="cause-detail">Steps: {c.troubleshooting_steps}</p>
                   </div>
                 ))}
-              </>
+              </div>
             ) : (
-              <p>No confident match found in knowledge base — needs manual review.</p>
+              <p>No confident match found in knowledge base - needs manual review.</p>
             )}
-            <div className="report-section">
 
+            <div className="report-section">
+              <a
                 href={`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/report`}
                 className="download-btn"
                 download
-            >
-    Download PDF Report
-  </a>
-</div>
+              >
+                Download PDF Report
+              </a>
+            </div>
+
             <div className="alert-section">
               <h3>Admin Alert</h3>
               {!alertText ? (
@@ -185,12 +187,12 @@ function App() {
                   {loadingAlert ? 'Generating...' : 'Generate Admin Alert'}
                 </button>
               ) : (
-                <>
+                <div>
                   <pre className="alert-text">{alertText}</pre>
                   <button onClick={copyAlert} className="copy-btn">
                     <Copy size={14} /> {copied ? 'Copied!' : 'Copy to Clipboard'}
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
