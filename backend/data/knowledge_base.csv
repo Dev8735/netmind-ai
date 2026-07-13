@@ -24,3 +24,28 @@ VPN tunnel down,Remote site cannot connect,IKE phase mismatch,45,show crypto isa
 VPN tunnel down,Remote site cannot connect,Interesting traffic not matched,30,show crypto ipsec sa,Review and correct traffic selectors/ACLs,High,Remote site disconnected
 VPN tunnel down,Remote site cannot connect,ISP link down,25,show interface status,Check WAN interface and ISP connectivity,High,Remote site disconnected
 Switch high memory usage,Sluggish management access; possible crash risk,Memory leak from software bug,50,show processes memory,Upgrade to stable IOS/firmware version,Medium,Risk of device crash
+DNS resolution failure,Users cannot access websites by name,DNS server down,50,nslookup,Restart DNS service; verify server reachability,High,Users cannot browse internet
+DNS resolution failure,Users cannot access websites by name,Incorrect DNS configuration,30,show running-config,Verify DNS server IPs in device config,High,Users cannot browse internet
+DNS resolution failure,Users cannot access websites by name,Upstream DNS provider outage,20,nslookup external,Check ISP/public DNS provider status,High,Users cannot browse internet
+Core switch power failure,Entire site offline; no lights on switch,PSU failure,60,show power inline,Replace power supply unit; check redundant PSU,Critical,Total site outage
+Core switch power failure,Entire site offline; no lights on switch,Power outage at site,30,check UPS status,Verify mains power and UPS battery status,Critical,Total site outage
+Core switch power failure,Entire site offline; no lights on switch,Tripped circuit breaker,10,check electrical panel,Check and reset circuit breaker,Critical,Total site outage
+Spanning tree loop detected,Network broadcast storm; slow performance,Redundant link misconfiguration,55,show spanning-tree,Verify STP configuration on all switches,Critical,Network-wide slowdown
+Spanning tree loop detected,Network broadcast storm; slow performance,Disabled STP on a switch,30,show spanning-tree summary,Enable STP on all switches in the topology,Critical,Network-wide slowdown
+Spanning tree loop detected,Network broadcast storm; slow performance,Faulty cable creating loop,15,show interface status,Trace and remove looped cable,Critical,Network-wide slowdown
+VLAN trunk misconfiguration,Devices cannot communicate across VLANs,Trunk port not configured,50,show interface trunk,Configure trunk port and allowed VLANs,High,Cross-department connectivity loss
+VLAN trunk misconfiguration,Devices cannot communicate across VLANs,VLAN mismatch between switches,35,show vlan brief,Ensure VLAN IDs match across all switches,High,Cross-department connectivity loss
+VLAN trunk misconfiguration,Devices cannot communicate across VLANs,Native VLAN mismatch,15,show interface trunk,Align native VLAN settings on trunk ports,High,Cross-department connectivity loss
+NTP synchronization failure,Logs show incorrect timestamps,NTP server unreachable,55,show ntp status,Verify NTP server IP and reachability,Low,Inaccurate logging and troubleshooting
+NTP synchronization failure,Logs show incorrect timestamps,Firewall blocking NTP port,30,show access-lists,Allow UDP 123 through firewall,Low,Inaccurate logging and troubleshooting
+NTP synchronization failure,Logs show incorrect timestamps,Incorrect NTP config,15,show running-config,Correct NTP server configuration,Low,Inaccurate logging and troubleshooting
+Wireless controller unreachable,APs offline; cannot manage wifi,Controller hardware failure,45,show wireless controller status,Restart or replace wireless controller,High,Wifi network-wide outage
+Wireless controller unreachable,APs offline; cannot manage wifi,Network path to controller down,35,traceroute,Check routing path to controller,High,Wifi network-wide outage
+Wireless controller unreachable,APs offline; cannot manage wifi,Controller software crash,20,show logging,Review crash logs; restart controller service,High,Wifi network-wide outage
+Interface error counters increasing,CRC errors in interface logs,Faulty cable or connector,50,show interface counters errors,Replace cable and check connectors,Medium,Intermittent packet loss
+Interface error counters increasing,CRC errors in interface logs,Duplex/speed mismatch,30,show interface status,Set matching duplex/speed on both ends,Medium,Intermittent packet loss
+Interface error counters increasing,CRC errors in interface logs,EMI interference,20,physical inspection,Reroute cable away from interference sources,Medium,Intermittent packet loss
+Load balancer not distributing traffic,Uneven traffic distribution to servers,Health check misconfiguration,45,show lb health-check,Verify health check settings for backend servers,Medium,Degraded application performance
+Load balancer not distributing traffic,Uneven traffic distribution to servers,Backend server down,35,show lb pool status,Check backend server health and connectivity,Medium,Degraded application performance
+Load balancer not distributing traffic,Uneven traffic distribution to servers,Incorrect load balancing algorithm,20,show lb config,Review and adjust load balancing method,Medium,Degraded application performance
+Server unreachable from network,Cannot ping or access server,Network interface down on server,50,show interface status,Check server NIC status and cabling,Critical,Application/service downtime
