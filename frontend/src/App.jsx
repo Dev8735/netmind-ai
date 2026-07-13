@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertCircle, CheckCircle, Clock, Server } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Server, X, Copy } from 'lucide-react';
+import Topology from './Topology';
 import './App.css';
 
 const severityData = [
@@ -16,6 +17,10 @@ function App() {
   const [incidents, setIncidents] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [selectedDetail, setSelectedDetail] = useState(null);
+  const [alertText, setAlertText] = useState('');
+  const [loadingAlert, setLoadingAlert] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
@@ -41,6 +46,35 @@ function App() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openDetail = async (id) => {
+    setAlertText('');
+    setCopied(false);
+    try {
+      const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${id}`);
+      setSelectedDetail(res.data);
+    } catch (err) {
+      console.error('Failed to fetch detail:', err);
+    }
+  };
+
+  const generateAlert = async () => {
+    setLoadingAlert(true);
+    try {
+      const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/alert`);
+      setAlertText(res.data.alert);
+    } catch (err) {
+      console.error('Failed to generate alert:', err);
+    } finally {
+      setLoadingAlert(false);
+    }
+  };
+
+  const copyAlert = () => {
+    navigator.clipboard.writeText(alertText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -94,14 +128,14 @@ function App() {
       </section>
 
       <section className="panel">
-        <h2>Incident History</h2>
+        <h2>Incident History <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8'}}>(click a row for details)</span></h2>
         <table>
           <thead>
             <tr><th>Device</th><th>Issue</th><th>Severity</th><th>Status</th></tr>
           </thead>
           <tbody>
             {incidents.map(i => (
-              <tr key={i.id}>
+              <tr key={i.id} onClick={() => openDetail(i.id)} style={{ cursor: 'pointer' }}>
                 <td>{i.device}</td><td>{i.issue}</td>
                 <td><span className={`badge ${i.severity.toLowerCase()}`}>{i.severity}</span></td>
                 <td>{i.status}</td>
@@ -110,6 +144,58 @@ function App() {
           </tbody>
         </table>
       </section>
+
+      {selectedDetail && (
+        <div className="modal-overlay" onClick={() => setSelectedDetail(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setSelectedDetail(null)}><X size={18} /></button>
+            <h2>{selectedDetail.device} — {selectedDetail.severity}</h2>
+            <p className="modal-issue">{selectedDetail.issue}</p>
+
+            <h3>Network Topology</h3>
+            <Topology affectedDevice={selectedDetail.device} />
+
+            {selectedDetail.diagnosis && selectedDetail.diagnosis.matched ? (
+              <>
+                <h3>Ranked Possible Causes</h3>
+                {selectedDetail.diagnosis.causes.map((c, idx) => (
+                  <div key={idx} className="cause-block">
+                    <p><strong>{idx + 1}. {c.cause}</strong> ({c.probability}% likely)</p>
+                    <p className="cause-detail">Verify: <code>{c.verification_command}</code></p>
+                    <p className="cause-detail">Steps: {c.troubleshooting_steps}</p>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <p>No confident match found in knowledge base — needs manual review.</p>
+            )}
+            <div className="report-section">
+
+                href={`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/report`}
+                className="download-btn"
+                download
+            >
+    Download PDF Report
+  </a>
+</div>
+            <div className="alert-section">
+              <h3>Admin Alert</h3>
+              {!alertText ? (
+                <button onClick={generateAlert} disabled={loadingAlert}>
+                  {loadingAlert ? 'Generating...' : 'Generate Admin Alert'}
+                </button>
+              ) : (
+                <>
+                  <pre className="alert-text">{alertText}</pre>
+                  <button onClick={copyAlert} className="copy-btn">
+                    <Copy size={14} /> {copied ? 'Copied!' : 'Copy to Clipboard'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
