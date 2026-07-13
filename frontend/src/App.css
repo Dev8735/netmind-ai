@@ -48,3 +48,23 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
   border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;
 }
 .download-btn:hover { background: #16a34a; }
+.no-match-banner {
+  background: #422006; border: 1px solid #f97316; color: #fed7aa;
+  padding: 12px 16px; border-radius: 6px; margin-top: 10px; font-size: 14px;
+}
+.severity-banner {
+  padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-weight: 600; font-size: 13px;
+}
+.severity-banner.critical { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+.severity-banner.high { background: #431407; color: #fdba74; border: 1px solid #f97316; }
+.severity-banner.medium { background: #422006; color: #fde047; border: 1px solid #eab308; }
+.no-match-banner {
+  background: #422006; border: 1px solid #f97316; color: #fed7aa;
+  padding: 12px 16px; border-radius: 6px; margin-top: 10px; font-size: 14px;
+}
+.severity-banner {
+  padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-weight: 600; font-size: 13px;
+}
+.severity-banner.critical { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+.severity-banner.high { background: #431407; color: #fdba74; border: 1px solid #f97316; }
+.severity-banner.medium { background: #422006; color: #fde047; border: 1px solid #eab308; }

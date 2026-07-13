@@ -150,6 +150,11 @@ function App() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setSelectedDetail(null)}><X size={18} /></button>
             <h2>{selectedDetail.device} - {selectedDetail.severity}</h2>
+            <div className={`severity-banner ${selectedDetail.severity.toLowerCase()}`}>
+              {selectedDetail.severity === 'Critical' && 'Immediate action required'}
+              {selectedDetail.severity === 'High' && 'Prompt attention needed'}
+              {selectedDetail.severity === 'Medium' && 'Schedule investigation'}
+            </div>
             <p className="modal-issue">{selectedDetail.issue}</p>
 
             <h3>Network Topology</h3>
@@ -167,11 +172,13 @@ function App() {
                 ))}
               </div>
             ) : (
-              <p>No confident match found in knowledge base - needs manual review.</p>
+              <div className="no-match-banner">
+                No confident match found in knowledge base. This incident requires manual engineer review.
+              </div>
             )}
 
             <div className="report-section">
-              <a
+
                 href={`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/report`}
                 className="download-btn"
                 download
