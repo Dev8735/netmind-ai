@@ -49,3 +49,28 @@ Load balancer not distributing traffic,Uneven traffic distribution to servers,He
 Load balancer not distributing traffic,Uneven traffic distribution to servers,Backend server down,35,show lb pool status,Check backend server health and connectivity,Medium,Degraded application performance
 Load balancer not distributing traffic,Uneven traffic distribution to servers,Incorrect load balancing algorithm,20,show lb config,Review and adjust load balancing method,Medium,Degraded application performance
 Server unreachable from network,Cannot ping or access server,Network interface down on server,50,show interface status,Check server NIC status and cabling,Critical,Application/service downtime
+Switch interface error-disabled,Port automatically shut down,Port security violation,55,show interface status err-disabled,Identify violating MAC address and clear port security,High,Device disconnected from network
+Switch interface error-disabled,Port automatically shut down,BPDU guard triggered,30,show spanning-tree,Check for unauthorized switch connected to port,High,Device disconnected from network
+Switch interface error-disabled,Port automatically shut down,UDLD detected fault,15,show udld,Check fiber/cable for unidirectional link fault,High,Device disconnected from network
+OSPF neighbor stuck in INIT state,Router not forming OSPF adjacency,Mismatched OSPF network type,45,show ip ospf neighbor,Ensure matching network type on both routers,High,Routing table incomplete
+OSPF neighbor stuck in INIT state,Router not forming OSPF adjacency,Area ID mismatch,35,show ip ospf interface,Verify OSPF area IDs match on both sides,High,Routing table incomplete
+OSPF neighbor stuck in INIT state,Router not forming OSPF adjacency,MTU mismatch,20,show interface mtu,Align MTU settings across the link,High,Routing table incomplete
+Email server unreachable,Users cannot send or receive email,Mail server service down,50,telnet mailserver 25,Restart mail service; check server health,High,Business communication disrupted
+Email server unreachable,Users cannot send or receive email,Firewall blocking SMTP,30,show firewall rules,Allow SMTP/IMAP ports through firewall,High,Business communication disrupted
+Email server unreachable,Users cannot send or receive email,DNS MX record issue,20,nslookup -type=mx,Verify MX records point to correct mail server,High,Business communication disrupted
+Wireless authentication failures,Users cannot connect to wifi,Incorrect wifi password entered,40,show wireless clients failed,Verify correct SSID password is being used,Low,Individual user cannot connect
+Wireless authentication failures,Users cannot connect to wifi,RADIUS server unreachable,35,show radius statistics,Check RADIUS server connectivity and config,Medium,Multiple users cannot connect
+Wireless authentication failures,Users cannot connect to wifi,Certificate expired,25,show wireless certificate,Renew expired wifi authentication certificate,Medium,Multiple users cannot connect
+Switch stack member failure,One switch in stack not responding,Stack cable disconnected,50,show switch stack-ports,Check and reseat stack cabling,High,Reduced switch capacity
+Switch stack member failure,One switch in stack not responding,Faulty stack member hardware,35,show switch,Replace faulty stack member unit,High,Reduced switch capacity
+Switch stack member failure,One switch in stack not responding,Firmware version mismatch,15,show version,Update firmware to match stack master version,High,Reduced switch capacity
+Print server not responding,Users cannot print documents,Print spooler service crashed,50,show services,Restart print spooler service,Low,Printing unavailable office-wide
+Print server not responding,Users cannot print documents,Network path to printer down,30,ping printer_ip,Check network connectivity to printer,Low,Printing unavailable office-wide
+Print server not responding,Users cannot print documents,Print queue overloaded,20,show print queue,Clear stuck print jobs from queue,Low,Printing unavailable office-wide
+High latency on WAN link,Slow response for remote sites,Bandwidth saturation,50,show interface wan utilization,Implement QoS or increase bandwidth,Medium,Remote site performance degraded
+High latency on WAN link,Slow response for remote sites,ISP routing issue,30,traceroute remote_site,Contact ISP to investigate routing path,Medium,Remote site performance degraded
+High latency on WAN link,Slow response for remote sites,MTU/fragmentation issue,20,ping with size,Adjust MTU settings to prevent fragmentation,Medium,Remote site performance degraded
+Switch temperature warning,Switch reporting high temperature alarm,Blocked or failed cooling fan,55,show environment temperature,Check and clear fan vents; replace faulty fan,Medium,Risk of thermal shutdown
+Switch temperature warning,Switch reporting high temperature alarm,Poor rack ventilation,30,physical inspection,Improve rack airflow and cooling,Medium,Risk of thermal shutdown
+Switch temperature warning,Switch reporting high temperature alarm,Overloaded switch chassis,15,show environment,Redistribute load across additional switches,Medium,Risk of thermal shutdown
+Router interface down after config change,Connectivity lost after maintenance,Interface accidentally shut down,60,show interface status,Verify interface is not administratively shut down,Critical,Site disconnected after change
