@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+spacy
+reportlab
+pandas
+python-multipart
