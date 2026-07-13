@@ -34,3 +34,11 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
 .cause-block { background: #0f172a; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
 .cause-detail { font-size: 13px; color: #cbd5e1; margin: 4px 0; }
 .cause-detail code { background: #334155; padding: 2px 6px; border-radius: 4px; }
+.alert-section { margin-top: 20px; border-top: 1px solid #334155; padding-top: 16px; }
+.alert-text {
+  background: #0f172a; padding: 14px; border-radius: 6px; font-size: 12px;
+  white-space: pre-wrap; color: #cbd5e1; max-height: 300px; overflow-y: auto;
+  font-family: 'Courier New', monospace;
+}
+.copy-btn { display: flex; align-items: center; gap: 6px; margin-top: 10px; background: #334155; }
+.copy-btn:hover { background: #475569; }

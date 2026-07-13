@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertCircle, CheckCircle, Clock, Server, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Server, X, Copy } from 'lucide-react';
 import './App.css';
 
 const severityData = [
@@ -17,6 +17,9 @@ function App() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedDetail, setSelectedDetail] = useState(null);
+  const [alertText, setAlertText] = useState('');
+  const [loadingAlert, setLoadingAlert] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
@@ -45,12 +48,32 @@ function App() {
   };
 
   const openDetail = async (id) => {
+    setAlertText('');
+    setCopied(false);
     try {
       const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${id}`);
       setSelectedDetail(res.data);
     } catch (err) {
       console.error('Failed to fetch detail:', err);
     }
+  };
+
+  const generateAlert = async () => {
+    setLoadingAlert(true);
+    try {
+      const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/alert`);
+      setAlertText(res.data.alert);
+    } catch (err) {
+      console.error('Failed to generate alert:', err);
+    } finally {
+      setLoadingAlert(false);
+    }
+  };
+
+  const copyAlert = () => {
+    navigator.clipboard.writeText(alertText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -142,6 +165,22 @@ function App() {
             ) : (
               <p>No confident match found in knowledge base — needs manual review.</p>
             )}
+
+            <div className="alert-section">
+              <h3>Admin Alert</h3>
+              {!alertText ? (
+                <button onClick={generateAlert} disabled={loadingAlert}>
+                  {loadingAlert ? 'Generating...' : 'Generate Admin Alert'}
+                </button>
+              ) : (
+                <>
+                  <pre className="alert-text">{alertText}</pre>
+                  <button onClick={copyAlert} className="copy-btn">
+                    <Copy size={14} /> {copied ? 'Copied!' : 'Copy to Clipboard'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
