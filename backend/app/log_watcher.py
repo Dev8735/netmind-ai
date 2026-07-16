@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from .models import engine, Incident
 from .nlp_parser import parse_incident
 from .diagnosis_engine import diagnose_incident
+from .email_alerter import send_alert_email
 
 LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "simulator", "live_logs.txt")
 Session = sessionmaker(bind=engine)
@@ -39,6 +40,11 @@ def _process_new_line(line: str):
     session.commit()
     session.close()
     print(f"[log_watcher] Auto-created incident: {parsed['device']} - {diagnosis['severity']}")
+
+    if diagnosis["severity"] in ["Critical", "High"]:
+        subject = f"[NetMind AI] {diagnosis['severity']} Incident - {parsed['device']}"
+        body = f"Device: {parsed['device']}\nSeverity: {diagnosis['severity']}\nIssue: {text}\n\nCheck the dashboard for full diagnosis."
+        send_alert_email(subject, body)
 
 
 def _watch_loop():
