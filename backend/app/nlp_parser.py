@@ -45,3 +45,53 @@ def parse_incident(text: str) -> dict:
         "category": extract_category(text),
         "keywords": extract_keywords(text)
     }
+import json
+import urllib.request
+
+
+def _call_ollama_for_parsing(text: str) -> dict:
+    try:
+        prompt = f"""Extract from this network incident text:
+1. device (one of: switch, router, firewall, access point, server, modem, gateway, or "unknown")
+2. category (one of: connectivity, performance, hardware, configuration, or "uncategorized")
+
+Text: "{text}"
+
+Respond with ONLY valid JSON like: {{"device": "switch", "category": "connectivity"}}"""
+
+        data = json.dumps({
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": False
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            "http://localhost:11434/api/generate",
+            data=data,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=20) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            llm_text = result.get("response", "").strip()
+            parsed = json.loads(llm_text)
+            return {
+                "device": parsed.get("device", "unknown").title(),
+                "category": parsed.get("category", "uncategorized").title()
+            }
+    except Exception as e:
+        print(f"[nlp_parser] Ollama fallback unavailable: {e}")
+        return None
+
+
+def parse_incident_with_fallback(text: str) -> dict:
+    result = parse_incident(text)
+
+    if result["device"] == "Unknown" or result["category"] == "Uncategorized":
+        llm_result = _call_ollama_for_parsing(text)
+        if llm_result:
+            if result["device"] == "Unknown":
+                result["device"] = llm_result["device"]
+            if result["category"] == "Uncategorized":
+                result["category"] = llm_result["category"]
+
+    return result

@@ -6,12 +6,16 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
 from .models import engine, Incident
-from .nlp_parser import parse_incident
+from .nlp_parser import parse_incident_with_fallback as parse_incident
 from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
+from .log_watcher import start_watcher
 
 app = FastAPI(title="NetMind AI")
+@app.on_event("startup")
+def startup_event():
+    start_watcher()
 
 app.add_middleware(
     CORSMiddleware,
