@@ -15,7 +15,7 @@ app = FastAPI(title="NetMind AI")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -121,3 +121,57 @@ def create_incident(payload: IncidentCreate):
         "parsed": parsed,
         "diagnosis": diagnosis
     }
+
+
+TEST_INCIDENTS = [
+    "Core switch has no LEDs on and is not responding to ping",
+    "Users complaining about slow internet, router CPU is at 95%",
+    "Wifi on 3rd floor keeps disconnecting every few minutes",
+    "Port 12 on switch keeps going up and down in the logs",
+    "BGP neighbor to ISP router is down",
+    "New laptop not getting an IP address from DHCP",
+    "VPN tunnel to branch office keeps dropping",
+    "Firewall is blocking access to the internal portal",
+    "Printer not responding to any print jobs",
+    "Something strange is happening with the network, not sure what",
+]
+
+
+@app.post("/api/run-tests")
+def run_tests():
+    results = []
+    for text in TEST_INCIDENTS:
+        result = {"text": text, "status": "PASS"}
+        try:
+            parsed = parse_incident(text)
+            diagnosis = diagnose_incident(parsed["device"], parsed["category"], parsed["keywords"])
+
+            session = Session()
+            incident = Incident(
+                device_type=parsed["device"],
+                incident_description=text,
+                category=parsed["category"],
+                priority=diagnosis["severity"],
+                symptoms=", ".join(parsed["keywords"][:5]),
+                status="Open",
+                diagnosis_json=json.dumps(diagnosis)
+            )
+            session.add(incident)
+            session.commit()
+            session.refresh(incident)
+            session.close()
+
+            alert_text = generate_alert(incident.device_type, incident.incident_description, diagnosis)
+            output_dir = os.path.join(os.path.dirname(__file__), "..", "reports")
+            generate_pdf_report(incident, diagnosis, alert_text, output_dir)
+
+            result["device"] = parsed["device"]
+            result["severity"] = diagnosis["severity"]
+            result["matched"] = diagnosis["matched"]
+        except Exception as e:
+            result["status"] = "FAIL"
+            result["error"] = str(e)
+        results.append(result)
+
+    passed = sum(1 for r in results if r["status"] == "PASS")
+    return {"results": results, "passed": passed, "total": len(results)}
