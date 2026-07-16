@@ -31,8 +31,44 @@ function App() {
   };
 
   useEffect(() => {
-    fetchIncidents();
-  }, []);
+  fetchIncidents();
+
+  let ws;
+  let reconnectTimeout;
+
+  const connectWebSocket = () => {
+    ws = new WebSocket('ws://127.0.0.1:8000/ws/incidents');
+
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+    };
+
+    ws.onmessage = (event) => {
+  const newIncident = JSON.parse(event.data);
+  setIncidents(prev => {
+    const exists = prev.some(i => i.id === newIncident.id);
+    if (exists) return prev;
+    return [...prev, newIncident];
+  });
+};
+
+    ws.onerror = (err) => {
+      console.error('WebSocket error:', err);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected, retrying in 3s...');
+      reconnectTimeout = setTimeout(connectWebSocket, 3000);
+    };
+  };
+
+  connectWebSocket();
+
+  return () => {
+    clearTimeout(reconnectTimeout);
+    if (ws) ws.close();
+  };
+}, []);
 
   const handleSubmit = async () => {
     if (!incidentText.trim()) return;

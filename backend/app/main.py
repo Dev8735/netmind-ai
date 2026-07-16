@@ -11,10 +11,34 @@ from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from .log_watcher import start_watcher
+from fastapi import WebSocket, WebSocketDisconnect
 
 app = FastAPI(title="NetMind AI")
+active_connections = []
+
+
+@app.websocket("/ws/incidents")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+
+
+async def broadcast_new_incident(incident_data: dict):
+    for connection in active_connections[:]:
+        try:
+            await connection.send_json(incident_data)
+        except Exception:
+            active_connections.remove(connection)
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
+    import asyncio
+    from . import log_watcher
+    log_watcher.set_event_loop(asyncio.get_event_loop())
     start_watcher()
 
 app.add_middleware(
