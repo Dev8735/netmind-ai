@@ -21,6 +21,8 @@ function App() {
   const [alertText, setAlertText] = useState('');
   const [loadingAlert, setLoadingAlert] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [testResults, setTestResults] = useState(null);
+  const [runningTests, setRunningTests] = useState(false);
 
   const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
@@ -75,6 +77,20 @@ function App() {
     navigator.clipboard.writeText(alertText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const runTests = async () => {
+    setRunningTests(true);
+    setTestResults(null);
+    try {
+      const res = await axios.post('http://127.0.0.1:8000/api/run-tests');
+      setTestResults(res.data);
+      fetchIncidents();
+    } catch (err) {
+      console.error('Test run failed:', err);
+    } finally {
+      setRunningTests(false);
+    }
   };
 
   return (
@@ -145,6 +161,30 @@ function App() {
         </table>
       </section>
 
+      <section className="panel">
+        <h2>System Test</h2>
+        <button onClick={runTests} disabled={runningTests}>
+          {runningTests ? 'Running Tests...' : 'Run End-to-End Tests'}
+        </button>
+        {testResults && (
+          <div className="test-results">
+            <p className="test-summary">
+              {testResults.passed} / {testResults.total} passed
+            </p>
+            {testResults.results.map((r, idx) => (
+              <div key={idx} className={`test-row ${r.status.toLowerCase()}`}>
+                <span className="test-status">{r.status}</span>
+                <span className="test-text">{r.text}</span>
+                {r.status === 'PASS' && (
+                  <span className="test-meta">{r.device} | {r.severity} | {r.matched ? 'Matched' : 'No match'}</span>
+                )}
+                {r.status === 'FAIL' && <span className="test-meta">{r.error}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {selectedDetail && (
         <div className="modal-overlay" onClick={() => setSelectedDetail(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -178,7 +218,7 @@ function App() {
             )}
 
             <div className="report-section">
-
+              <a
                 href={`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/report`}
                 className="download-btn"
                 download

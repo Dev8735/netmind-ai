@@ -5,3 +5,4 @@ spacy
 reportlab
 pandas
 python-multipart
+sentence-transformers
