@@ -15,6 +15,7 @@ class Incident(Base):
     status = Column(String, default="Open")
     diagnosis_json = Column(Text)  # <-- ADD THIS LINE
     created_at = Column(DateTime, default=datetime.utcnow)
+    parent_incident_id = Column(Integer, nullable=True)
 
 class KnowledgeBase(Base):
     __tablename__ = "knowledge_base"
