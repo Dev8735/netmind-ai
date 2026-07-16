@@ -1,11 +1,15 @@
 from sqlalchemy.orm import sessionmaker
+from sentence_transformers import SentenceTransformer, util
 from .models import engine, KnowledgeBase
 
 Session = sessionmaker(bind=engine)
 
+print("Loading embedding model (first run may take a moment)...")
+model = SentenceTransformer('all-MiniLM-L6-v2')
+print("Embedding model loaded.")
 
-def calculate_match_score(incident_keywords: list, kb_entry) -> int:
-    """Count how many incident keywords appear in this KB entry's text fields."""
+
+def calculate_keyword_score(incident_keywords: list, kb_entry) -> int:
     kb_text = f"{kb_entry.incident_description} {kb_entry.symptoms}".lower()
     score = 0
     for kw in incident_keywords:
@@ -14,30 +18,38 @@ def calculate_match_score(incident_keywords: list, kb_entry) -> int:
     return score
 
 
-def diagnose_incident(device: str, category: str, keywords: list) -> dict:
+def diagnose_incident(device: str, category: str, keywords: list, raw_text: str = None) -> dict:
     session = Session()
     kb_entries = session.query(KnowledgeBase).all()
 
+    if not kb_entries:
+        session.close()
+        return {"matched": False, "severity": "Medium", "causes": []}
+
+    incident_text = raw_text if raw_text else " ".join(keywords)
+    incident_embedding = model.encode(incident_text, convert_to_tensor=True)
+
+    kb_texts = [f"{e.incident_description} {e.symptoms}" for e in kb_entries]
+    kb_embeddings = model.encode(kb_texts, convert_to_tensor=True)
+
+    similarities = util.cos_sim(incident_embedding, kb_embeddings)[0]
+
     scored_matches = []
-    for entry in kb_entries:
-        score = calculate_match_score(keywords, entry)
-        # Small boost if device name appears in the KB description too
-        if device.lower() in entry.incident_description.lower():
-            score += 2
-        if score > 0:
-            scored_matches.append((score, entry))
+    for idx, entry in enumerate(kb_entries):
+        embedding_score = float(similarities[idx])
+        keyword_score = calculate_keyword_score(keywords, entry)
+        device_boost = 0.15 if device.lower() in entry.incident_description.lower() else 0
+
+        combined_score = embedding_score + (keyword_score * 0.05) + device_boost
+        scored_matches.append((combined_score, entry))
 
     session.close()
 
-    if not scored_matches:
-        return {
-            "matched": False,
-            "severity": "Medium",
-            "causes": []
-        }
-
     scored_matches.sort(key=lambda x: x[0], reverse=True)
-    top_matches = scored_matches[:3]
+    top_matches = [m for m in scored_matches[:3] if m[0] > 0.25]
+
+    if not top_matches:
+        return {"matched": False, "severity": "Medium", "causes": []}
 
     causes = []
     for score, entry in top_matches:
@@ -46,10 +58,10 @@ def diagnose_incident(device: str, category: str, keywords: list) -> dict:
             "probability": entry.probability,
             "verification_command": entry.verification_command,
             "troubleshooting_steps": entry.troubleshooting_steps,
-            "match_score": score
+            "match_score": round(score, 3),
+            "fault_type": entry.fault_type or ""
         })
 
-    # Take severity from the single best match
     top_severity = top_matches[0][1].severity
 
     return {

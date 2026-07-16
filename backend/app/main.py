@@ -98,7 +98,7 @@ def download_report(incident_id: int):
 @app.post("/api/incidents")
 def create_incident(payload: IncidentCreate):
     parsed = parse_incident(payload.text)
-    diagnosis = diagnose_incident(parsed["device"], parsed["category"], parsed["keywords"])
+    diagnosis = diagnose_incident(parsed["device"], parsed["category"], parsed["keywords"], payload.text)
 
     session = Session()
     new_incident = Incident(
@@ -144,7 +144,7 @@ def run_tests():
         result = {"text": text, "status": "PASS"}
         try:
             parsed = parse_incident(text)
-            diagnosis = diagnose_incident(parsed["device"], parsed["category"], parsed["keywords"])
+            diagnosis = diagnose_incident(parsed["device"], parsed["category"], parsed["keywords"], text)
 
             session = Session()
             incident = Incident(
