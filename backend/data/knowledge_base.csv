@@ -1,4 +1,4 @@
-incident_description,symptoms,possible_cause,probability,verification_command,troubleshooting_steps,severity,business_impact
+incident_description,symptoms,possible_cause,probability,verification_command,troubleshooting_steps,severity,business_impact,fault_type
 Switch not responding to ping,No ping response; LEDs off,Power failure,70,show interface status,Check power cable and PSU; power cycle the switch,Critical,Complete site outage
 Switch not responding to ping,No ping response; LEDs off,Hardware fault,20,show environment,Check hardware diagnostics LEDs; replace if faulty,Critical,Complete site outage
 Switch not responding to ping,No ping response; LEDs off,Cable disconnected,10,show interface status,Verify physical cable connection,Critical,Complete site outage

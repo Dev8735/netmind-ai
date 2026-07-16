@@ -27,6 +27,7 @@ class KnowledgeBase(Base):
     troubleshooting_steps = Column(Text)
     severity = Column(String)
     business_impact = Column(Text)
+    fault_type = Column(String)
 
 class Alert(Base):
     __tablename__ = "alerts"
@@ -77,7 +78,8 @@ def load_knowledge_base():
             verification_command=row["verification_command"],
             troubleshooting_steps=row["troubleshooting_steps"],
             severity=row["severity"],
-            business_impact=row["business_impact"]
+            business_impact=row["business_impact"],
+            fault_type=row.get("fault_type", "") if "fault_type" in df.columns else ""
         )
         session.add(kb_entry)
 
