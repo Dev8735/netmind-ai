@@ -64,8 +64,9 @@ def diagnose_incident(device: str, category: str, keywords: list, raw_text: str 
         embedding_score = float(similarities[idx])
         keyword_score = calculate_keyword_score(keywords, entry)
         device_boost = 0.15 if device.lower() in entry.incident_description.lower() else 0
+        category_boost = 0.1 if category.lower() in entry.symptoms.lower() or category.lower() in entry.incident_description.lower() else 0
 
-        combined_score = embedding_score + (keyword_score * 0.05) + device_boost
+        combined_score = embedding_score + (keyword_score * 0.05) + device_boost + category_boost
         scored_matches.append((combined_score, entry))
 
     scored_matches.sort(key=lambda x: x[0], reverse=True)
@@ -87,8 +88,18 @@ def diagnose_incident(device: str, category: str, keywords: list, raw_text: str 
 
     top_severity = top_matches[0][1].severity
 
+    top_score = top_matches[0][0]
+
+    if top_score > 0.9:
+        confidence = "high"
+    elif top_score > 0.5:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
     return {
         "matched": True,
         "severity": top_severity,
-        "causes": causes
+        "causes": causes,
+        "confidence": confidence
     }

@@ -68,3 +68,10 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
 .severity-banner.critical { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
 .severity-banner.high { background: #431407; color: #fdba74; border: 1px solid #f97316; }
 .severity-banner.medium { background: #422006; color: #fde047; border: 1px solid #eab308; }
+.confidence-tag {
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
+  margin-left: 10px; text-transform: uppercase; vertical-align: middle;
+}
+.confidence-tag.high { background: #052e16; color: #4ade80; }
+.confidence-tag.medium { background: #422006; color: #fde047; }
+.confidence-tag.low { background: #450a0a; color: #f87171; }
