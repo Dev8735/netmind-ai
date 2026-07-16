@@ -202,8 +202,15 @@ function App() {
 
             {selectedDetail.diagnosis && selectedDetail.diagnosis.matched ? (
               <div>
-                <h3>Ranked Possible Causes</h3>
-                {selectedDetail.diagnosis.causes.map((c, idx) => (
+                <h3>
+                  {selectedDetail.diagnosis.confidence === 'high' ? 'Diagnosed Cause' : 'Ranked Possible Causes'}
+                  <span className={`confidence-tag ${selectedDetail.diagnosis.confidence}`}>
+                    {selectedDetail.diagnosis.confidence} confidence
+                  </span>
+                </h3>
+                {selectedDetail.diagnosis.causes
+                  .filter((c, idx) => selectedDetail.diagnosis.confidence === 'high' ? idx === 0 : true)
+                  .map((c, idx) => (
                   <div key={idx} className="cause-block">
                     <p><strong>{idx + 1}. {c.cause}</strong> ({c.probability}% likely)</p>
                     <p className="cause-detail">Verify: <code>{c.verification_command}</code></p>
