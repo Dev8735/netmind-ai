@@ -6,3 +6,4 @@ node_modules/
 .env
 reports/
 backend/simulator/live_logs.txt
+sent_alerts.log
