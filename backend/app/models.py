@@ -1,8 +1,11 @@
+import os
+import pandas as pd
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
 Base = declarative_base()
+
 
 class Incident(Base):
     __tablename__ = "incidents"
@@ -13,9 +16,10 @@ class Incident(Base):
     priority = Column(String)
     symptoms = Column(Text)
     status = Column(String, default="Open")
-    diagnosis_json = Column(Text)  # <-- ADD THIS LINE
-    created_at = Column(DateTime, default=datetime.utcnow)
+    diagnosis_json = Column(Text)
     parent_incident_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class KnowledgeBase(Base):
     __tablename__ = "knowledge_base"
@@ -30,6 +34,7 @@ class KnowledgeBase(Base):
     business_impact = Column(Text)
     fault_type = Column(String)
 
+
 class Alert(Base):
     __tablename__ = "alerts"
     id = Column(Integer, primary_key=True)
@@ -40,6 +45,7 @@ class Alert(Base):
     message_text = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
 class Report(Base):
     __tablename__ = "reports"
     id = Column(Integer, primary_key=True)
@@ -47,14 +53,22 @@ class Report(Base):
     file_path = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
+class Signal(Base):
+    __tablename__ = "signals"
+    id = Column(Integer, primary_key=True)
+    device = Column(String)
+    status = Column(String)
+    message = Column(Text)
+    incident_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 engine = create_engine("sqlite:///../database/netmind.db")
+
 
 def init_db():
     Base.metadata.create_all(engine)
-
-import pandas as pd
-import os
-from sqlalchemy.orm import sessionmaker
 
 
 def load_knowledge_base():

@@ -75,3 +75,27 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
 .confidence-tag.high { background: #052e16; color: #4ade80; }
 .confidence-tag.medium { background: #422006; color: #fde047; }
 .confidence-tag.low { background: #450a0a; color: #f87171; }
+/* Day 15 additions: Live Signal Monitor + Resolve */
+.signal-list { max-height: 260px; overflow-y: auto; margin-top: 8px; }
+.signal-row {
+  display: flex; align-items: center; gap: 10px; padding: 6px 8px;
+  border-radius: 6px; margin-bottom: 4px; font-size: 12px;
+}
+.signal-row.ok { background: rgba(34,197,94,0.06); }
+.signal-row.fault { background: rgba(239,68,68,0.08); }
+.signal-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.signal-dot.ok { background: #22c55e; }
+.signal-dot.fault { background: #ef4444; }
+.signal-time { color: #64748b; min-width: 60px; }
+.signal-device { color: #93c5fd; font-weight: 600; min-width: 130px; }
+.signal-message { color: #cbd5e1; flex: 1; }
+
+.resolve-row { display: flex; align-items: center; gap: 12px; margin: 10px 0 16px 0; }
+.status-pill {
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; text-transform: uppercase;
+}
+.status-pill.open { background: #431407; color: #fdba74; }
+.status-pill.resolved { background: #052e16; color: #4ade80; }
+.status-pill.in.progress { background: #422006; color: #fde047; }
+.resolve-btn { background: #16a34a; padding: 6px 14px; font-size: 13px; }
+.resolve-btn:hover { background: #15803d; }

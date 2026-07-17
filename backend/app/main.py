@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
-from .models import engine, Incident
+from .models import engine, Incident, Signal
 from .nlp_parser import parse_incident_with_fallback as parse_incident
 from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
@@ -75,6 +75,31 @@ def get_incidents():
     return result
 
 
+@app.post("/api/incidents/{incident_id}/resolve")
+def resolve_incident(incident_id: int):
+    session = Session()
+    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        session.close()
+        return {"error": "Not found"}
+    incident.status = "Resolved"
+    session.commit()
+    session.close()
+    return {"id": incident_id, "status": "Resolved"}
+@app.get("/api/signals")
+def get_signals(limit: int = 20):
+    session = Session()
+    signals = session.query(Signal).order_by(Signal.created_at.desc()).limit(limit).all()
+    result = [
+        {
+            "id": s.id, "device": s.device, "status": s.status,
+            "message": s.message, "incident_id": s.incident_id,
+            "created_at": s.created_at.strftime("%H:%M:%S") if s.created_at else ""
+        }
+        for s in signals
+    ]
+    session.close()
+    return result
 @app.get("/api/incidents/{incident_id}")
 def get_incident_detail(incident_id: int):
     session = Session()
