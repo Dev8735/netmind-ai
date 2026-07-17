@@ -7,7 +7,7 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "live_logs.txt")
 
 DEVICES = ["Core-Switch-01", "Router-Branch-02", "AP-Floor3-05", "Firewall-Edge-01", "Switch-Server-Room"]
 
-SCENARIOS = [
+FAULT_SCENARIOS = [
     "{device} not responding to ping, LEDs off",
     "{device} showing high CPU usage causing slow performance",
     "{device} port flapping repeatedly in logs",
@@ -20,17 +20,23 @@ SCENARIOS = [
     "{device} temperature warning, fan may have failed",
 ]
 
+FAULT_PROBABILITY = 0.3
+
 
 def generate_log_line():
     device = random.choice(DEVICES)
-    scenario = random.choice(SCENARIOS).format(device=device)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return f"[{timestamp}] {scenario}"
+
+    if random.random() < FAULT_PROBABILITY:
+        scenario = random.choice(FAULT_SCENARIOS).format(device=device)
+        return f"[{timestamp}] SIGNAL|FAULT|{device}|{scenario}"
+    else:
+        return f"[{timestamp}] SIGNAL|OK|{device}|Heartbeat check passed, all systems normal"
 
 
 def run_generator(interval_seconds=15, max_logs=None):
     print(f"Log generator started. Writing to {LOG_FILE}")
-    print(f"Generating a new log every {interval_seconds} seconds. Press Ctrl+C to stop.")
+    print(f"Generating a new signal every {interval_seconds} seconds. Press Ctrl+C to stop.")
 
     count = 0
     with open(LOG_FILE, "a", encoding="utf-8") as f:
