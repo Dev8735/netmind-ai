@@ -2,11 +2,27 @@ import os
 import json
 import threading
 import time
+import asyncio
 from sqlalchemy.orm import sessionmaker
 from .models import engine, Incident
 from .nlp_parser import parse_incident
 from .diagnosis_engine import diagnose_incident
 from .email_alerter import send_alert_email
+
+_main_loop = None
+
+
+def set_event_loop(loop):
+    global _main_loop
+    _main_loop = loop
+
+
+def _notify_dashboard(incident_id, device, issue, severity):
+    if _main_loop is None:
+        return
+    from .main import broadcast_new_incident
+    payload = {"id": incident_id, "device": device, "issue": issue, "severity": severity, "status": "Open"}
+    asyncio.run_coroutine_threadsafe(broadcast_new_incident(payload), _main_loop)
 
 LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "simulator", "live_logs.txt")
 Session = sessionmaker(bind=engine)
@@ -38,8 +54,11 @@ def _process_new_line(line: str):
     )
     session.add(incident)
     session.commit()
+    incident_id = incident.id
     session.close()
     print(f"[log_watcher] Auto-created incident: {parsed['device']} - {diagnosis['severity']}")
+
+    _notify_dashboard(incident_id, parsed['device'], text, diagnosis['severity'])
 
     if diagnosis["severity"] in ["Critical", "High"]:
         subject = f"[NetMind AI] {diagnosis['severity']} Incident - {parsed['device']}"

@@ -5,16 +5,40 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
-from .models import engine, Incident
+from .models import engine, Incident, Signal
 from .nlp_parser import parse_incident_with_fallback as parse_incident
 from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from .log_watcher import start_watcher
+from fastapi import WebSocket, WebSocketDisconnect
 
 app = FastAPI(title="NetMind AI")
+active_connections = []
+
+
+@app.websocket("/ws/incidents")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+
+
+async def broadcast_new_incident(incident_data: dict):
+    for connection in active_connections[:]:
+        try:
+            await connection.send_json(incident_data)
+        except Exception:
+            active_connections.remove(connection)
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
+    import asyncio
+    from . import log_watcher
+    log_watcher.set_event_loop(asyncio.get_event_loop())
     start_watcher()
 
 app.add_middleware(
@@ -51,6 +75,31 @@ def get_incidents():
     return result
 
 
+@app.post("/api/incidents/{incident_id}/resolve")
+def resolve_incident(incident_id: int):
+    session = Session()
+    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        session.close()
+        return {"error": "Not found"}
+    incident.status = "Resolved"
+    session.commit()
+    session.close()
+    return {"id": incident_id, "status": "Resolved"}
+@app.get("/api/signals")
+def get_signals(limit: int = 20):
+    session = Session()
+    signals = session.query(Signal).order_by(Signal.created_at.desc()).limit(limit).all()
+    result = [
+        {
+            "id": s.id, "device": s.device, "status": s.status,
+            "message": s.message, "incident_id": s.incident_id,
+            "created_at": s.created_at.strftime("%H:%M:%S") if s.created_at else ""
+        }
+        for s in signals
+    ]
+    session.close()
+    return result
 @app.get("/api/incidents/{incident_id}")
 def get_incident_detail(incident_id: int):
     session = Session()

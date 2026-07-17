@@ -23,6 +23,8 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [testResults, setTestResults] = useState(null);
   const [runningTests, setRunningTests] = useState(false);
+  const [signals, setSignals] = useState([]);
+  const [resolving, setResolving] = useState(false);
 
   const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
@@ -30,8 +32,61 @@ function App() {
       .catch(err => console.error('Failed to fetch incidents:', err));
   };
 
+  const fetchSignals = () => {
+    axios.get('http://127.0.0.1:8000/api/signals?limit=20')
+      .then(res => setSignals(res.data))
+      .catch(err => console.error('Failed to fetch signals:', err));
+  };
+
   useEffect(() => {
     fetchIncidents();
+    fetchSignals();
+
+    let ws;
+    let reconnectTimeout;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket('ws://127.0.0.1:8000/ws/incidents');
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'incident') {
+          setIncidents(prev => {
+            const exists = prev.some(i => i.id === data.id);
+            if (exists) return prev;
+            return [...prev, { id: data.id, device: data.device, issue: data.issue, severity: data.severity, status: data.status }];
+          });
+        }
+
+        if (data.type === 'signal') {
+          setSignals(prev => [
+            { device: data.device, status: data.status, message: data.message, created_at: new Date().toLocaleTimeString() },
+            ...prev
+          ].slice(0, 20));
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, retrying in 3s...');
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
+    };
   }, []);
 
   const handleSubmit = async () => {
@@ -77,6 +132,19 @@ function App() {
     navigator.clipboard.writeText(alertText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const resolveIncident = async () => {
+    setResolving(true);
+    try {
+      await axios.post(`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/resolve`);
+      setSelectedDetail(prev => ({ ...prev, status: 'Resolved' }));
+      setIncidents(prev => prev.map(i => i.id === selectedDetail.id ? { ...i, status: 'Resolved' } : i));
+    } catch (err) {
+      console.error('Failed to resolve incident:', err);
+    } finally {
+      setResolving(false);
+    }
   };
 
   const runTests = async () => {
@@ -162,6 +230,24 @@ function App() {
       </section>
 
       <section className="panel">
+        <h2>Live Signal Monitor <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8'}}>(every 15s check-in from monitored devices)</span></h2>
+        {signals.length === 0 ? (
+          <p style={{color:'#64748b', fontSize:'13px'}}>No signals yet - start the log generator to see live device check-ins.</p>
+        ) : (
+          <div className="signal-list">
+            {signals.map((s, idx) => (
+              <div key={idx} className={`signal-row ${s.status}`}>
+                <span className={`signal-dot ${s.status}`}></span>
+                <span className="signal-time">{s.created_at}</span>
+                <span className="signal-device">{s.device}</span>
+                <span className="signal-message">{s.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel">
         <h2>System Test</h2>
         <button onClick={runTests} disabled={runningTests}>
           {runningTests ? 'Running Tests...' : 'Run End-to-End Tests'}
@@ -196,6 +282,15 @@ function App() {
               {selectedDetail.severity === 'Medium' && 'Schedule investigation'}
             </div>
             <p className="modal-issue">{selectedDetail.issue}</p>
+
+            <div className="resolve-row">
+              <span className={`status-pill ${selectedDetail.status.toLowerCase()}`}>{selectedDetail.status}</span>
+              {selectedDetail.status !== 'Resolved' && (
+                <button onClick={resolveIncident} disabled={resolving} className="resolve-btn">
+                  {resolving ? 'Marking Resolved...' : 'Mark as Resolved'}
+                </button>
+              )}
+            </div>
 
             <h3>Network Topology</h3>
             <Topology affectedDevice={selectedDetail.device} />
