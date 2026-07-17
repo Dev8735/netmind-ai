@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
-from .models import engine, Incident, Signal
+from .models import engine, Incident, Signal, Feedback
 from .nlp_parser import parse_incident_with_fallback as parse_incident
 from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
@@ -40,6 +40,18 @@ async def websocket_endpoint(websocket: WebSocket):
         if websocket in active_connections:
             active_connections.remove(websocket)
 
+class FeedbackCreate(BaseModel):
+    helpful: str
+
+
+@app.post("/api/incidents/{incident_id}/feedback")
+def submit_feedback(incident_id: int, payload: FeedbackCreate):
+    session = Session()
+    feedback = Feedback(incident_id=incident_id, helpful=payload.helpful)
+    session.add(feedback)
+    session.commit()
+    session.close()
+    return {"status": "recorded"}
 
 async def broadcast_message(payload: dict):
     for connection in active_connections[:]:
