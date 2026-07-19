@@ -25,6 +25,7 @@ function App() {
   const [runningTests, setRunningTests] = useState(false);
   const [signals, setSignals] = useState([]);
   const [resolving, setResolving] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
 
   const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
@@ -108,6 +109,7 @@ function App() {
   const openDetail = async (id) => {
     setAlertText('');
     setCopied(false);
+    setFeedbackGiven(false);
     try {
       const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${id}`);
       setSelectedDetail(res.data);
@@ -146,6 +148,16 @@ function App() {
       setResolving(false);
     }
   };
+
+  const submitFeedback = async (helpful) => {
+    try {
+      await axios.post(`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/feedback`, { helpful });
+      setFeedbackGiven(true);
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+    }
+  };
+
 
   const runTests = async () => {
     setRunningTests(true);
@@ -316,6 +328,20 @@ function App() {
             ) : (
               <div className="no-match-banner">
                 No confident match found in knowledge base. This incident requires manual engineer review.
+              </div>
+            )}
+
+            {selectedDetail.diagnosis && selectedDetail.diagnosis.matched && (
+              <div className="feedback-row">
+                {!feedbackGiven ? (
+                  <>
+                    <span className="feedback-label">Was this diagnosis helpful?</span>
+                    <button onClick={() => submitFeedback('yes')} className="feedback-btn yes">👍 Yes</button>
+                    <button onClick={() => submitFeedback('no')} className="feedback-btn no">👎 No</button>
+                  </>
+                ) : (
+                  <span className="feedback-thanks">Thanks for the feedback!</span>
+                )}
               </div>
             )}
 
