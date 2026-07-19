@@ -64,10 +64,9 @@ async def broadcast_message(payload: dict):
 
 @app.on_event("startup")
 async def startup_event():
-    from . import log_watcher
-    log_watcher.set_event_loop(asyncio.get_event_loop())
-    log_watcher.start_watcher()
-
+    from . import syslog_listener
+    syslog_listener.set_event_loop(asyncio.get_event_loop())
+    syslog_listener.start_syslog_listener()
 
 @app.get("/health")
 def health_check():

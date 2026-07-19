@@ -103,3 +103,15 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
   display: inline-block; background: #1e3a8a; color: #93c5fd;
   font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 8px;
 }
+/* Day 18: Feedback loop */
+.feedback-row {
+  display: flex; align-items: center; gap: 10px; margin: 14px 0;
+  padding: 10px; background: #1e293b; border-radius: 6px;
+}
+.feedback-label { font-size: 13px; color: #94a3b8; }
+.feedback-btn {
+  background: #334155; padding: 5px 12px; font-size: 13px; border-radius: 6px;
+}
+.feedback-btn.yes:hover { background: #166534; }
+.feedback-btn.no:hover { background: #7f1d1d; }
+.feedback-thanks { font-size: 13px; color: #4ade80; }
