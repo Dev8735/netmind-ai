@@ -11,6 +11,7 @@ from .nlp_parser import parse_incident_with_fallback as parse_incident
 from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
+from datetime import datetime, timedelta
 
 app = FastAPI(title="NetMind AI")
 
@@ -132,6 +133,21 @@ def resolve_incident(incident_id: int):
     session.commit()
     session.close()
     return {"id": incident_id, "status": "Resolved"}
+ESCALATION_MINUTES = 3  # short window so it's demoable
+
+
+@app.get("/api/incidents/escalated")
+def get_escalated_incidents():
+    session = Session()
+    cutoff = datetime.utcnow() - timedelta(minutes=ESCALATION_MINUTES)
+    escalated = session.query(Incident).filter(
+        Incident.priority == "Critical",
+        Incident.status == "Open",
+        Incident.created_at <= cutoff
+    ).all()
+    result = [{"id": i.id, "device": i.device_type} for i in escalated]
+    session.close()
+    return result
 
 
 @app.get("/api/incidents/{incident_id}/alert")

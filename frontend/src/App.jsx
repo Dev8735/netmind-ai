@@ -25,6 +25,7 @@ function App() {
   const [runningTests, setRunningTests] = useState(false);
   const [signals, setSignals] = useState([]);
   const [resolving, setResolving] = useState(false);
+  const [escalatedIds, setEscalatedIds] = useState([]);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
 
   const fetchIncidents = () => {
@@ -88,6 +89,15 @@ function App() {
       clearTimeout(reconnectTimeout);
       if (ws) ws.close();
     };
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      axios.get('http://127.0.0.1:8000/api/incidents/escalated')
+        .then(res => setEscalatedIds(res.data.map(i => i.id)))
+        .catch(err => console.error('Failed to fetch escalations:', err));
+    }, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = async () => {
@@ -233,7 +243,10 @@ function App() {
             {incidents.map(i => (
               <tr key={i.id} onClick={() => openDetail(i.id)} style={{ cursor: 'pointer' }}>
                 <td>{i.device}</td><td>{i.issue}</td>
-                <td><span className={`badge ${i.severity.toLowerCase()}`}>{i.severity}</span></td>
+                <td>
+                  <span className={`badge ${i.severity.toLowerCase()}`}>{i.severity}</span>
+                  {escalatedIds.includes(i.id) && <span className="escalated-badge">ESCALATED</span>}
+                </td>
                 <td>{i.status}</td>
               </tr>
             ))}

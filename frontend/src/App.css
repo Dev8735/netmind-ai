@@ -115,3 +115,9 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
 .feedback-btn.yes:hover { background: #166534; }
 .feedback-btn.no:hover { background: #7f1d1d; }
 .feedback-thanks { font-size: 13px; color: #4ade80; }
+/* Day 21: Auto-escalation */
+.escalated-badge {
+  background: #7f1d1d; color: #fca5a5; font-size: 10px; font-weight: 700;
+  padding: 2px 6px; border-radius: 8px; margin-left: 6px; animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
