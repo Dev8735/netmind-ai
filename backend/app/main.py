@@ -12,6 +12,7 @@ from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from datetime import datetime, timedelta
+from .auth import verify_password, create_access_token, ADMIN_USERNAME
 
 app = FastAPI(title="NetMind AI")
 
@@ -53,6 +54,18 @@ def submit_feedback(incident_id: int, payload: FeedbackCreate):
     session.commit()
     session.close()
     return {"status": "recorded"}
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/login")
+def login(payload: LoginRequest):
+    if payload.username != ADMIN_USERNAME or not verify_password(payload.password):
+        return {"error": "Invalid credentials"}
+    token = create_access_token(payload.username)
+    return {"token": token}
 
 async def broadcast_message(payload: dict):
     for connection in active_connections[:]:
