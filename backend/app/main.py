@@ -148,6 +148,21 @@ def get_escalated_incidents():
     result = [{"id": i.id, "device": i.device_type} for i in escalated]
     session.close()
     return result
+@app.get("/api/analytics/recurring")
+def get_recurring_faults():
+    session = Session()
+    incidents = session.query(Incident).all()
+    session.close()
+
+    counts = {}
+    for i in incidents:
+        key = f"{i.device_type} - {i.category}"
+        counts[key] = counts.get(key, 0) + 1
+
+    sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+    top_10 = sorted_counts[:10]
+
+    return [{"label": label, "count": count} for label, count in top_10]
 
 
 @app.get("/api/incidents/{incident_id}/alert")
