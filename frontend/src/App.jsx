@@ -3,6 +3,7 @@ import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { AlertCircle, CheckCircle, Clock, Server, X, Copy } from 'lucide-react';
 import Topology from './Topology';
+import Login from './Login';
 import './App.css';
 
 const severityData = [
@@ -13,6 +14,7 @@ const severityData = [
 ];
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('netmind_token'));
   const [incidentText, setIncidentText] = useState('');
   const [incidents, setIncidents] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -191,6 +193,10 @@ function App() {
       setRunningTests(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="dashboard">

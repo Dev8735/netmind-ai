@@ -121,3 +121,18 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
   padding: 2px 6px; border-radius: 8px; margin-left: 6px; animation: pulse 1.5s infinite;
 }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.login-page {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; background: #0f172a;
+}
+.login-box {
+  background: #1e293b; padding: 40px; border-radius: 12px; width: 320px; text-align: center;
+}
+.login-box h1 { margin: 0 0 4px 0; font-size: 22px; }
+.login-subtitle { color: #94a3b8; font-size: 13px; margin-bottom: 24px; }
+.login-box input {
+  width: 100%; padding: 10px; margin-bottom: 12px; background: #0f172a;
+  border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; box-sizing: border-box;
+}
+.login-error { color: #f87171; font-size: 13px; margin-bottom: 12px; }
+.login-box button { width: 100%; }
