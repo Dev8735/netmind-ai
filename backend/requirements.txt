@@ -6,3 +6,6 @@ reportlab
 pandas
 python-multipart
 sentence-transformers
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
