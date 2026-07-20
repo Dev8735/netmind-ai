@@ -13,12 +13,15 @@ from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from datetime import datetime, timedelta
 from .auth import verify_password, create_access_token, ADMIN_USERNAME
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI(title="NetMind AI")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
