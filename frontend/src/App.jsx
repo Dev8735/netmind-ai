@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { AlertCircle, CheckCircle, Clock, Server, X, Copy } from 'lucide-react';
 import Topology from './Topology';
 import './App.css';
@@ -25,6 +25,8 @@ function App() {
   const [runningTests, setRunningTests] = useState(false);
   const [signals, setSignals] = useState([]);
   const [resolving, setResolving] = useState(false);
+  const [escalatedIds, setEscalatedIds] = useState([]);
+  const [recurringData, setRecurringData] = useState([]);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
 
   const fetchIncidents = () => {
@@ -39,9 +41,16 @@ function App() {
       .catch(err => console.error('Failed to fetch signals:', err));
   };
 
+  const fetchRecurring = () => {
+    axios.get('http://127.0.0.1:8000/api/analytics/recurring')
+      .then(res => setRecurringData(res.data))
+      .catch(err => console.error('Failed to fetch analytics:', err));
+  };
+
   useEffect(() => {
     fetchIncidents();
     fetchSignals();
+    fetchRecurring();
 
     let ws;
     let reconnectTimeout;
@@ -62,6 +71,7 @@ function App() {
             if (exists) return prev;
             return [...prev, { id: data.id, device: data.device, issue: data.issue, severity: data.severity, status: data.status }];
           });
+          fetchRecurring();
         }
 
         if (data.type === 'signal') {
@@ -88,6 +98,15 @@ function App() {
       clearTimeout(reconnectTimeout);
       if (ws) ws.close();
     };
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      axios.get('http://127.0.0.1:8000/api/incidents/escalated')
+        .then(res => setEscalatedIds(res.data.map(i => i.id)))
+        .catch(err => console.error('Failed to fetch escalations:', err));
+    }, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = async () => {
@@ -224,6 +243,23 @@ function App() {
       </section>
 
       <section className="panel">
+        <h2>Top Recurring Issues</h2>
+        {recurringData.length === 0 ? (
+          <p style={{color:'#64748b', fontSize:'13px'}}>No data yet.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={recurringData} layout="vertical" margin={{left: 20}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis type="number" stroke="#94a3b8" />
+              <YAxis type="category" dataKey="label" stroke="#94a3b8" width={140} tick={{fontSize: 11}} />
+              <Tooltip contentStyle={{background:'#1e293b', border:'1px solid #334155'}} />
+              <Bar dataKey="count" fill="#3b82f6" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </section>
+
+      <section className="panel">
         <h2>Incident History <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8'}}>(click a row for details)</span></h2>
         <table>
           <thead>
@@ -233,7 +269,10 @@ function App() {
             {incidents.map(i => (
               <tr key={i.id} onClick={() => openDetail(i.id)} style={{ cursor: 'pointer' }}>
                 <td>{i.device}</td><td>{i.issue}</td>
-                <td><span className={`badge ${i.severity.toLowerCase()}`}>{i.severity}</span></td>
+                <td>
+                  <span className={`badge ${i.severity.toLowerCase()}`}>{i.severity}</span>
+                  {escalatedIds.includes(i.id) && <span className="escalated-badge">ESCALATED</span>}
+                </td>
                 <td>{i.status}</td>
               </tr>
             ))}
