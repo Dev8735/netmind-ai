@@ -16,16 +16,6 @@ ADMIN_USERNAME = "admin"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ADMIN_PASSWORD_HASH = pwd_context.hash(os.getenv("ADMIN_PASSWORD", "netmind123"))
 
-SECRET_KEY = "netmind-ai-dev-secret-change-in-production"
-ALGORITHM = "HS256"
-TOKEN_EXPIRE_MINUTES = 120
-
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD_HASH = "$2b$12$KIXQKl9L4/tWqLtQZ1z4o.7YQwZbYqQzL8YwZbYqQzL8YwZbYqQzL8"  # placeholder, set below
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-ADMIN_PASSWORD_HASH = pwd_context.hash("netmind123")
-
 
 def verify_password(plain_password: str) -> bool:
     return pwd_context.verify(plain_password, ADMIN_PASSWORD_HASH)

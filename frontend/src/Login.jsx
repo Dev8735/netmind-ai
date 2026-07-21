@@ -18,7 +18,7 @@ function Login({ onLogin }) {
       } else {
         setError('Invalid credentials');
       }
-    } catch (err) {
+    } catch {
       setError('Login failed. Check your credentials.');
     } finally {
       setLoading(false);
