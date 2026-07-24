@@ -1,0 +1,48 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ dev, main ]
+  pull_request:
+    branches: [ dev, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          python -m spacy download en_core_web_sm
+
+      - name: Verify backend imports cleanly
+        run: |
+          cd backend
+          python -c "import ast; ast.parse(open('app/main.py').read()); print('main.py syntax OK')"
+          python -c "import ast; ast.parse(open('app/auth.py').read()); print('auth.py syntax OK')"
+          python -c "import ast; ast.parse(open('app/diagnosis_engine.py').read()); print('diagnosis_engine.py syntax OK')"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
