@@ -6,12 +6,12 @@ import Topology from './Topology';
 import Login from './Login';
 import './App.css';
 
-const severityData = [
-  { name: 'Critical', value: 1, color: '#ef4444' },
-  { name: 'High', value: 1, color: '#f97316' },
-  { name: 'Medium', value: 1, color: '#eab308' },
-  { name: 'Low', value: 0, color: '#22c55e' },
-];
+const SEVERITY_COLORS = {
+  Critical: '#ef4444',
+  High: '#f97316',
+  Medium: '#eab308',
+  Low: '#22c55e',
+};
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('netmind_token'));
@@ -198,6 +198,13 @@ function App() {
     return <Login onLogin={() => setIsAuthenticated(true)} />;
   }
 
+  const severityData = ['Critical', 'High', 'Medium', 'Low'].map(name => ({
+    name,
+    value: incidents.filter(i => i.severity === name).length,
+    color: SEVERITY_COLORS[name],
+  }));
+  const hasSeverityData = severityData.some(s => s.value > 0);
+
   return (
     <div className="dashboard">
       <header className="topbar">
@@ -236,15 +243,29 @@ function App() {
         </div>
 
         <div className="panel">
-          <h2>Severity Breakdown</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={severityData} dataKey="value" nameKey="name" outerRadius={80} label>
-                {severityData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          <h2>Severity Breakdown <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8'}}>(live, from detected signals)</span></h2>
+          {!hasSeverityData ? (
+            <p style={{color:'#64748b', fontSize:'13px'}}>No incidents yet - severity breakdown will populate as faults are detected.</p>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={severityData} dataKey="value" nameKey="name" outerRadius={80} label>
+                    {severityData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="severity-legend">
+                {severityData.map((s, i) => (
+                  <div key={i} className="severity-legend-item">
+                    <span className="severity-dot" style={{background: s.color}}></span>
+                    {s.name}: <strong>{s.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </section>
 
