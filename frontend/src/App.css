@@ -152,3 +152,14 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
   background: #0f172a; border: 1px solid #334155; color: #93c5fd;
   font-size: 11px; padding: 3px 8px; border-radius: 10px;
 }
+/* Auto-remediation */
+.status-pill.auto-resolved { background: #052e16; color: #4ade80; }
+.remediation-panel {
+  background: #052e16; border: 1px solid #166534; border-radius: 8px;
+  padding: 14px; margin: 14px 0;
+}
+.remediation-note { font-size: 12px; color: #86efac; margin: 4px 0 10px 0; }
+.remediation-log {
+  background: #0f172a; padding: 10px; border-radius: 6px; font-size: 11px;
+  color: #cbd5e1; white-space: pre-wrap; font-family: 'Courier New', monospace;
+}

@@ -300,7 +300,7 @@ function App() {
                   <span className={`badge ${i.severity.toLowerCase()}`}>{i.severity}</span>
                   {escalatedIds.includes(i.id) && <span className="escalated-badge">ESCALATED</span>}
                 </td>
-                <td>{i.status}</td>
+                <td>{i.status === 'Auto-Resolved' ? '⚡ Auto-Resolved' : i.status}</td>
               </tr>
             ))}
           </tbody>
@@ -362,13 +362,26 @@ function App() {
             <p className="modal-issue">{selectedDetail.issue}</p>
 
             <div className="resolve-row">
-              <span className={`status-pill ${selectedDetail.status.toLowerCase()}`}>{selectedDetail.status}</span>
-              {selectedDetail.status !== 'Resolved' && (
+              <span className={`status-pill ${selectedDetail.status.toLowerCase().replace(' ', '-')}`}>
+                {selectedDetail.status === 'Auto-Resolved' ? '⚡ Auto-Resolved' : selectedDetail.status}
+              </span>
+              {selectedDetail.status !== 'Resolved' && selectedDetail.status !== 'Auto-Resolved' && (
                 <button onClick={resolveIncident} disabled={resolving} className="resolve-btn">
                   {resolving ? 'Marking Resolved...' : 'Mark as Resolved'}
                 </button>
               )}
             </div>
+
+            {selectedDetail.remediation_log && (
+              <div className="remediation-panel">
+                <h3>⚡ Automated Remediation</h3>
+                <p className="remediation-note">
+                  This fault matched a known safe, config-only issue type and was
+                  automatically fixed with no engineer action required.
+                </p>
+                <pre className="remediation-log">{selectedDetail.remediation_log}</pre>
+              </div>
+            )}
 
             <h3>Network Topology</h3>
             <Topology affectedDevice={selectedDetail.device} />

@@ -9,6 +9,7 @@ from .nlp_parser import parse_incident_with_fallback as parse_incident
 from .diagnosis_engine import diagnose_incident
 from .email_alerter import send_alert_email
 from .correlation_engine import find_correlated_parent
+from .remediation_engine import attempt_remediation
 
 Session = sessionmaker(bind=engine)
 
@@ -51,15 +52,25 @@ def _process_signal(device: str, status: str, message: str):
 
     parent_id = find_correlated_parent(incident_device, parsed["category"])
 
+    incident_status = "Open"
+    remediation_log = None
+    if diagnosis["matched"] and diagnosis["confidence"] == "high":
+        top_cause = diagnosis["causes"][0]
+        remediation = attempt_remediation(top_cause.get("fault_type", ""), top_cause["verification_command"])
+        if remediation:
+            incident_status = "Auto-Resolved"
+            remediation_log = remediation["log"]
+
     incident = Incident(
         device_type=incident_device,
         incident_description=message,
         category=parsed["category"],
         priority=diagnosis["severity"],
         symptoms=", ".join(parsed["keywords"][:5]),
-        status="Open",
+        status=incident_status,
         diagnosis_json=json.dumps(diagnosis),
-        parent_incident_id=parent_id
+        parent_incident_id=parent_id,
+        remediation_log=remediation_log
     )
     session.add(incident)
     session.commit()
@@ -70,14 +81,14 @@ def _process_signal(device: str, status: str, message: str):
     session.commit()
     session.close()
 
-    print(f"[syslog_listener] Auto-created incident via Syslog: {incident_device} - {diagnosis['severity']}")
+    print(f"[syslog_listener] Auto-created incident via Syslog: {incident_device} - {diagnosis['severity']} ({incident_status})")
     if parent_id:
         print(f"[syslog_listener] Incident {incident_id} correlated under parent {parent_id}")
 
     _notify_dashboard({
         "type": "incident",
         "id": incident_id, "device": incident_device, "issue": message,
-        "severity": diagnosis["severity"], "status": "Open",
+        "severity": diagnosis["severity"], "status": incident_status,
         "parent_incident_id": parent_id
     })
     _notify_dashboard({"type": "signal", "device": device, "status": "fault", "message": message})
@@ -89,6 +100,10 @@ def _process_signal(device: str, status: str, message: str):
 
 
 def _parse_syslog_message(raw: str):
+    """
+    Parses a simplified RFC 5424 Syslog message.
+    Expected MSG portion format: device|STATUS|message
+    """
     match = SYSLOG_PATTERN.match(raw)
     if not match:
         return None
