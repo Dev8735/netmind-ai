@@ -378,7 +378,7 @@ function App() {
                 <h3>
                   {selectedDetail.diagnosis.confidence === 'high' ? 'Diagnosed Cause' : 'Ranked Possible Causes'}
                   <span className={`confidence-tag ${selectedDetail.diagnosis.confidence}`}>
-                    {selectedDetail.diagnosis.confidence} confidence
+                    {selectedDetail.diagnosis.confidence} confidence ({selectedDetail.diagnosis.confidence_score})
                   </span>
                 </h3>
                 {selectedDetail.diagnosis.causes
@@ -386,6 +386,14 @@ function App() {
                   .map((c, idx) => (
                   <div key={idx} className="cause-block">
                     <p><strong>{idx + 1}. {c.cause}</strong> ({c.probability}% likely)</p>
+                    <div className="evidence-row">
+                      <span className="evidence-chip">Similarity: {c.similarity_score}</span>
+                      <span className="evidence-chip">
+                        {c.matched_keywords && c.matched_keywords.length > 0
+                          ? `Matched: ${c.matched_keywords.join(', ')}`
+                          : 'Matched: semantic (no exact keyword overlap)'}
+                      </span>
+                    </div>
                     <p className="cause-detail">Verify: <code>{c.verification_command}</code></p>
                     <p className="cause-detail">Steps: {c.troubleshooting_steps}</p>
                   </div>

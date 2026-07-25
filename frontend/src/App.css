@@ -146,3 +146,9 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
 .severity-dot {
   width: 8px; height: 8px; border-radius: 50%; display: inline-block;
 }
+/* Evidence chips */
+.evidence-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.evidence-chip {
+  background: #0f172a; border: 1px solid #334155; color: #93c5fd;
+  font-size: 11px; padding: 3px 8px; border-radius: 10px;
+}
