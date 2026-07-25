@@ -14,6 +14,7 @@ from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from .auth import verify_password, create_access_token, ADMIN_USERNAME
+from .remediation_engine import attempt_remediation
 
 load_dotenv()
 
@@ -162,7 +163,8 @@ def get_incident_detail(incident_id: int):
         "issue": incident.incident_description,
         "severity": incident.priority,
         "status": incident.status,
-        "diagnosis": json.loads(incident.diagnosis_json) if incident.diagnosis_json else None
+        "diagnosis": json.loads(incident.diagnosis_json) if incident.diagnosis_json else None,
+        "remediation_log": incident.remediation_log
     }
 
 
@@ -225,6 +227,15 @@ def create_incident(payload: IncidentCreate):
     parsed = parse_incident(payload.text)
     diagnosis = diagnose_incident(parsed["device"], parsed["category"], parsed["keywords"], payload.text)
 
+    incident_status = "Open"
+    remediation_log = None
+    if diagnosis["matched"] and diagnosis["confidence"] == "high":
+        top_cause = diagnosis["causes"][0]
+        remediation = attempt_remediation(top_cause.get("fault_type", ""), top_cause["verification_command"])
+        if remediation:
+            incident_status = "Auto-Resolved"
+            remediation_log = remediation["log"]
+
     session = Session()
     new_incident = Incident(
         device_type=parsed["device"],
@@ -232,8 +243,9 @@ def create_incident(payload: IncidentCreate):
         category=parsed["category"],
         priority=diagnosis["severity"],
         symptoms=", ".join(parsed["keywords"][:5]),
-        status="Open",
-        diagnosis_json=json.dumps(diagnosis)
+        status=incident_status,
+        diagnosis_json=json.dumps(diagnosis),
+        remediation_log=remediation_log
     )
     session.add(new_incident)
     session.commit()
@@ -244,7 +256,8 @@ def create_incident(payload: IncidentCreate):
         "id": new_incident.id,
         "message": "Incident created",
         "parsed": parsed,
-        "diagnosis": diagnosis
+        "diagnosis": diagnosis,
+        "status": incident_status
     }
 
 
