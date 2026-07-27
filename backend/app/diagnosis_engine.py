@@ -101,9 +101,13 @@ def diagnose_incident(device: str, category: str, keywords: list, raw_text: str 
     top_matches = [m for m in scored_matches[:3] if m[0] > 0.25]
 
     if not top_matches:
-        return {"matched": False, "severity": "Medium", "causes": [], "confidence": "low", "confidence_score": 0.0}
+        return {
+            "matched": False, "severity": "Medium", "causes": [],
+            "confidence": "low", "confidence_score": 0.0, "rejected_causes": []
+        }
 
     causes = []
+    seen_causes = set()
     for combined_score, embedding_score, entry in top_matches:
         matched_kw = get_matched_keywords(keywords, entry)
         causes.append({
@@ -114,8 +118,32 @@ def diagnose_incident(device: str, category: str, keywords: list, raw_text: str 
             "match_score": round(combined_score, 3),
             "similarity_score": round(embedding_score, 3),
             "matched_keywords": matched_kw,
-            "fault_type": entry.fault_type or ""
+            "fault_type": entry.fault_type or "",
+            "business_impact": entry.business_impact or ""
         })
+        seen_causes.add(entry.possible_cause)
+
+    # Next-best candidates that were considered but scored too low to be
+    # presented as likely causes - shown as "rejected" for transparency.
+    rejected_causes = []
+    for combined_score, embedding_score, entry in scored_matches[3:8]:
+        if entry.possible_cause in seen_causes:
+            continue
+        if combined_score <= 0.15:
+            continue
+        matched_kw = get_matched_keywords(keywords, entry)
+        reason = (
+            f"Lower similarity ({round(embedding_score, 3)}) and "
+            f"{'no' if not matched_kw else 'only ' + str(len(matched_kw))} matching keyword(s)"
+        )
+        rejected_causes.append({
+            "cause": entry.possible_cause,
+            "match_score": round(combined_score, 3),
+            "reason": reason
+        })
+        seen_causes.add(entry.possible_cause)
+        if len(rejected_causes) >= 3:
+            break
 
     top_severity = top_matches[0][2].severity
     top_score = top_matches[0][0]
@@ -131,6 +159,7 @@ def diagnose_incident(device: str, category: str, keywords: list, raw_text: str 
         "matched": True,
         "severity": top_severity,
         "causes": causes,
+        "rejected_causes": rejected_causes,
         "confidence": confidence,
         "confidence_score": round(top_score, 3)
     }

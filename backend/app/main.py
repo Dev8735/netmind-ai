@@ -14,7 +14,7 @@ from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from .auth import verify_password, create_access_token, ADMIN_USERNAME
-from .remediation_engine import attempt_remediation
+from .remediation_engine import attempt_remediation, is_auto_remediable
 
 load_dotenv()
 
@@ -230,11 +230,24 @@ def create_incident(payload: IncidentCreate):
     incident_status = "Open"
     remediation_log = None
     if diagnosis["matched"] and diagnosis["confidence"] == "high":
-        top_cause = diagnosis["causes"][0]
-        remediation = attempt_remediation(top_cause.get("fault_type", ""), top_cause["verification_command"])
-        if remediation:
-            incident_status = "Auto-Resolved"
-            remediation_log = remediation["log"]
+        # Scan all ranked causes (not just the top one) for the first
+        # cause whose fault_type is on the auto-remediation whitelist.
+        # The top-ranked cause by embedding similarity is not always the
+        # one that matches a remediable fault_type - a near-miss KB entry
+        # (e.g. "port security violation") can outscore the correct
+        # "port_admin_shutdown" entry on wording alone.
+        remediable_cause = next(
+            (c for c in diagnosis["causes"] if is_auto_remediable(c.get("fault_type", ""))),
+            None
+        )
+        if remediable_cause:
+            remediation = attempt_remediation(
+                remediable_cause.get("fault_type", ""),
+                remediable_cause["verification_command"]
+            )
+            if remediation:
+                incident_status = "Auto-Resolved"
+                remediation_log = remediation["log"]
 
     session = Session()
     new_incident = Incident(
