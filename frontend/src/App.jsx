@@ -406,11 +406,25 @@ function App() {
                           ? `Matched: ${c.matched_keywords.join(', ')}`
                           : 'Matched: semantic (no exact keyword overlap)'}
                       </span>
+                      {c.business_impact && (
+                        <span className="evidence-chip impact-chip">Impact: {c.business_impact}</span>
+                      )}
                     </div>
                     <p className="cause-detail">Verify: <code>{c.verification_command}</code></p>
                     <p className="cause-detail">Steps: {c.troubleshooting_steps}</p>
                   </div>
                 ))}
+
+                {selectedDetail.diagnosis.rejected_causes && selectedDetail.diagnosis.rejected_causes.length > 0 && (
+                  <details className="rejected-causes">
+                    <summary>Other causes considered and ruled out ({selectedDetail.diagnosis.rejected_causes.length})</summary>
+                    {selectedDetail.diagnosis.rejected_causes.map((r, idx) => (
+                      <p key={idx} className="rejected-cause-item">
+                        <strong>{r.cause}</strong> — {r.reason}
+                      </p>
+                    ))}
+                  </details>
+                )}
               </div>
             ) : (
               <div className="no-match-banner">

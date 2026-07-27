@@ -163,3 +163,11 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
   background: #0f172a; padding: 10px; border-radius: 6px; font-size: 11px;
   color: #cbd5e1; white-space: pre-wrap; font-family: 'Courier New', monospace;
 }
+/* Phase 3: Explainability */
+.impact-chip { color: #fca5a5 !important; }
+.rejected-causes {
+  margin-top: 14px; padding: 10px; background: #0f172a; border-radius: 6px;
+  border: 1px solid #334155; font-size: 12px;
+}
+.rejected-causes summary { cursor: pointer; color: #94a3b8; font-weight: 600; }
+.rejected-cause-item { color: #cbd5e1; margin: 8px 0 0 12px; font-size: 12px; }

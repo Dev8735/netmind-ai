@@ -65,6 +65,14 @@ class Signal(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class Feedback(Base):
+    __tablename__ = "feedback"
+    id = Column(Integer, primary_key=True)
+    incident_id = Column(Integer, ForeignKey("incidents.id"))
+    helpful = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 engine = create_engine("sqlite:///../database/netmind.db")
 
 
