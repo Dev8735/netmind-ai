@@ -14,7 +14,8 @@ from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from .auth import verify_password, create_access_token, ADMIN_USERNAME
-from .remediation_engine import attempt_remediation, is_auto_remediable
+from .remediation_engine import attempt_remediation
+from .incident_similarity import find_similar_incidents
 
 load_dotenv()
 
@@ -136,71 +137,6 @@ def get_recurring_faults():
     return [{"label": label, "count": count} for label, count in top_10]
 
 
-@app.get("/api/analytics/performance")
-def get_performance_stats():
-    session = Session()
-    feedbacks = session.query(Feedback).all()
-    incident_ids = [f.incident_id for f in feedbacks]
-    incidents_map = {}
-    if incident_ids:
-        incidents_map = {
-            i.id: i for i in session.query(Incident).filter(Incident.id.in_(incident_ids)).all()
-        }
-    session.close()
-
-    total = len(feedbacks)
-    helpful_yes = sum(1 for f in feedbacks if f.helpful == "yes")
-    overall_accuracy = round((helpful_yes / total) * 100, 1) if total else None
-
-    # Accuracy broken down by the confidence level the diagnosis engine
-    # originally assigned - the most useful stat for judging whether
-    # "high confidence" claims can actually be trusted.
-    confidence_buckets = {}
-    for f in feedbacks:
-        incident = incidents_map.get(f.incident_id)
-        if not incident or not incident.diagnosis_json:
-            continue
-        try:
-            diagnosis = json.loads(incident.diagnosis_json)
-        except (json.JSONDecodeError, TypeError):
-            continue
-        conf = diagnosis.get("confidence", "unknown")
-        bucket = confidence_buckets.setdefault(conf, {"yes": 0, "total": 0})
-        bucket["total"] += 1
-        if f.helpful == "yes":
-            bucket["yes"] += 1
-
-    by_confidence = {
-        level: round((data["yes"] / data["total"]) * 100, 1) if data["total"] else None
-        for level, data in confidence_buckets.items()
-    }
-
-    # Accuracy trend by day, so improvements over time are visible.
-    daily_buckets = {}
-    for f in feedbacks:
-        day = f.created_at.strftime("%Y-%m-%d") if f.created_at else "unknown"
-        bucket = daily_buckets.setdefault(day, {"yes": 0, "total": 0})
-        bucket["total"] += 1
-        if f.helpful == "yes":
-            bucket["yes"] += 1
-
-    trend = [
-        {
-            "date": day,
-            "accuracy": round((data["yes"] / data["total"]) * 100, 1) if data["total"] else 0,
-            "count": data["total"]
-        }
-        for day, data in sorted(daily_buckets.items())
-    ]
-
-    return {
-        "overall_accuracy": overall_accuracy,
-        "total_feedback": total,
-        "by_confidence": by_confidence,
-        "trend": trend
-    }
-
-
 @app.get("/api/incidents/escalated")
 def get_escalated_incidents():
     session = Session()
@@ -231,6 +167,17 @@ def get_incident_detail(incident_id: int):
         "diagnosis": json.loads(incident.diagnosis_json) if incident.diagnosis_json else None,
         "remediation_log": incident.remediation_log
     }
+
+
+@app.get("/api/incidents/{incident_id}/similar")
+def get_similar_incidents(incident_id: int):
+    """
+    Day 7 - Incident Similarity Search.
+    Returns the top-3 most similar PAST incidents (not knowledge base
+    entries) to the given incident, using the existing embedding model.
+    """
+    matches = find_similar_incidents(incident_id)
+    return {"incident_id": incident_id, "similar_incidents": matches}
 
 
 @app.post("/api/incidents/{incident_id}/resolve")
@@ -295,24 +242,11 @@ def create_incident(payload: IncidentCreate):
     incident_status = "Open"
     remediation_log = None
     if diagnosis["matched"] and diagnosis["confidence"] == "high":
-        # Scan all ranked causes (not just the top one) for the first
-        # cause whose fault_type is on the auto-remediation whitelist.
-        # The top-ranked cause by embedding similarity is not always the
-        # one that matches a remediable fault_type - a near-miss KB entry
-        # (e.g. "port security violation") can outscore the correct
-        # "port_admin_shutdown" entry on wording alone.
-        remediable_cause = next(
-            (c for c in diagnosis["causes"] if is_auto_remediable(c.get("fault_type", ""))),
-            None
-        )
-        if remediable_cause:
-            remediation = attempt_remediation(
-                remediable_cause.get("fault_type", ""),
-                remediable_cause["verification_command"]
-            )
-            if remediation:
-                incident_status = "Auto-Resolved"
-                remediation_log = remediation["log"]
+        top_cause = diagnosis["causes"][0]
+        remediation = attempt_remediation(top_cause.get("fault_type", ""), top_cause["verification_command"])
+        if remediation:
+            incident_status = "Auto-Resolved"
+            remediation_log = remediation["log"]
 
     session = Session()
     new_incident = Incident(
