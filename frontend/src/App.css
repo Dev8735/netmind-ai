@@ -58,16 +58,6 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
 .severity-banner.critical { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
 .severity-banner.high { background: #431407; color: #fdba74; border: 1px solid #f97316; }
 .severity-banner.medium { background: #422006; color: #fde047; border: 1px solid #eab308; }
-.no-match-banner {
-  background: #422006; border: 1px solid #f97316; color: #fed7aa;
-  padding: 12px 16px; border-radius: 6px; margin-top: 10px; font-size: 14px;
-}
-.severity-banner {
-  padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-weight: 600; font-size: 13px;
-}
-.severity-banner.critical { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
-.severity-banner.high { background: #431407; color: #fdba74; border: 1px solid #f97316; }
-.severity-banner.medium { background: #422006; color: #fde047; border: 1px solid #eab308; }
 .confidence-tag {
   font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
   margin-left: 10px; text-transform: uppercase; vertical-align: middle;
@@ -171,3 +161,16 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; }
 }
 .rejected-causes summary { cursor: pointer; color: #94a3b8; font-weight: 600; }
 .rejected-cause-item { color: #cbd5e1; margin: 8px 0 0 12px; font-size: 12px; }
+
+/* Day 8: Similar Past Incidents panel */
+.similar-incidents-section { margin-top: 20px; border-top: 1px solid #334155; padding-top: 16px; }
+.similar-incidents-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.similar-incident-row {
+  background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+  padding: 10px 12px;
+}
+.similar-incident-main { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+.similar-incident-device { color: #93c5fd; font-weight: 600; font-size: 13px; flex-shrink: 0; }
+.similar-incident-issue { color: #cbd5e1; font-size: 13px; }
+.similar-incident-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.similar-incident-score { color: #64748b; font-size: 11px; margin-left: auto; }
