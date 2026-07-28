@@ -8,16 +8,31 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from .models import engine, Incident, Signal, Feedback
+from .models import engine, Incident, Signal, Feedback, KnowledgeBase
 from .nlp_parser import parse_incident_with_fallback as parse_incident
 from .diagnosis_engine import diagnose_incident
 from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from .auth import verify_password, create_access_token, ADMIN_USERNAME
-from .remediation_engine import attempt_remediation
-from .incident_similarity import find_similar_incidents
+from .remediation_engine import attempt_remediation, is_auto_remediable
 
 load_dotenv()
+
+
+def get_top_fault_type(diagnosis_json):
+    """Extract the fault_type of the top-ranked cause from a stored
+    diagnosis_json string. Returns None if there's no match, no causes,
+    or the top cause has no fault_type tagged."""
+    if not diagnosis_json:
+        return None
+    try:
+        diagnosis = json.loads(diagnosis_json)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not diagnosis.get("matched") or not diagnosis.get("causes"):
+        return None
+    fault_type = diagnosis["causes"][0].get("fault_type")
+    return fault_type or None
 
 app = FastAPI(title="NetMind AI")
 
@@ -120,6 +135,91 @@ def get_signals(limit: int = 20):
     return result
 
 
+@app.get("/api/knowledge-base/symptom-groups")
+def get_symptom_groups():
+    """Distinct symptom groups from the knowledge base, each of which may
+    branch into multiple ranked possible causes - the raw material for the
+    decision tree explorer."""
+    session = Session()
+    entries = session.query(KnowledgeBase).all()
+    session.close()
+
+    groups = {}
+    for e in entries:
+        key = e.incident_description
+        groups[key] = groups.get(key, 0) + 1
+
+    result = [{"symptom": symptom, "cause_count": count} for symptom, count in groups.items()]
+    result.sort(key=lambda x: x["cause_count"], reverse=True)
+    return result
+
+
+@app.get("/api/knowledge-base/tree")
+def get_decision_tree(symptom: str):
+    """Build a branching decision tree for one symptom group: root =
+    the symptom text, children = each possible cause ranked by
+    probability, with its verification command and troubleshooting
+    steps as leaf detail."""
+    session = Session()
+    entries = session.query(KnowledgeBase).filter(KnowledgeBase.incident_description == symptom).all()
+    session.close()
+
+    causes = []
+    for e in entries:
+        try:
+            probability = int(e.probability)
+        except (TypeError, ValueError):
+            probability = 0
+        causes.append({
+            "cause": e.possible_cause,
+            "probability": probability,
+            "verification_command": e.verification_command,
+            "troubleshooting_steps": e.troubleshooting_steps,
+            "severity": e.severity,
+            "fault_type": e.fault_type or None,
+        })
+
+    causes.sort(key=lambda x: x["probability"], reverse=True)
+    return {"symptom": symptom, "causes": causes}
+
+
+@app.get("/api/knowledge-graph")
+def get_knowledge_graph():
+    """Build a device <-> fault_type relationship graph from real
+    diagnosed incident history: which devices have actually been
+    diagnosed with which fault types, and how often. This surfaces
+    patterns not visible in any single incident or symptom tree -
+    e.g. a fault type showing up across multiple device types."""
+    session = Session()
+    incidents = session.query(Incident).all()
+    session.close()
+
+    device_counts = {}
+    fault_counts = {}
+    edge_counts = {}
+
+    for incident in incidents:
+        fault_type = get_top_fault_type(incident.diagnosis_json)
+        if not fault_type:
+            continue
+        device = incident.device_type
+        device_counts[device] = device_counts.get(device, 0) + 1
+        fault_counts[fault_type] = fault_counts.get(fault_type, 0) + 1
+        edge_key = (device, fault_type)
+        edge_counts[edge_key] = edge_counts.get(edge_key, 0) + 1
+
+    nodes = (
+        [{"id": f"device:{d}", "type": "device", "label": d, "count": c} for d, c in device_counts.items()] +
+        [{"id": f"fault:{f}", "type": "fault_type", "label": f, "count": c} for f, c in fault_counts.items()]
+    )
+    edges = [
+        {"source": f"device:{d}", "target": f"fault:{f}", "weight": w}
+        for (d, f), w in edge_counts.items()
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
 @app.get("/api/analytics/recurring")
 def get_recurring_faults():
     session = Session()
@@ -137,6 +237,71 @@ def get_recurring_faults():
     return [{"label": label, "count": count} for label, count in top_10]
 
 
+@app.get("/api/analytics/performance")
+def get_performance_stats():
+    session = Session()
+    feedbacks = session.query(Feedback).all()
+    incident_ids = [f.incident_id for f in feedbacks]
+    incidents_map = {}
+    if incident_ids:
+        incidents_map = {
+            i.id: i for i in session.query(Incident).filter(Incident.id.in_(incident_ids)).all()
+        }
+    session.close()
+
+    total = len(feedbacks)
+    helpful_yes = sum(1 for f in feedbacks if f.helpful == "yes")
+    overall_accuracy = round((helpful_yes / total) * 100, 1) if total else None
+
+    # Accuracy broken down by the confidence level the diagnosis engine
+    # originally assigned - the most useful stat for judging whether
+    # "high confidence" claims can actually be trusted.
+    confidence_buckets = {}
+    for f in feedbacks:
+        incident = incidents_map.get(f.incident_id)
+        if not incident or not incident.diagnosis_json:
+            continue
+        try:
+            diagnosis = json.loads(incident.diagnosis_json)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        conf = diagnosis.get("confidence", "unknown")
+        bucket = confidence_buckets.setdefault(conf, {"yes": 0, "total": 0})
+        bucket["total"] += 1
+        if f.helpful == "yes":
+            bucket["yes"] += 1
+
+    by_confidence = {
+        level: round((data["yes"] / data["total"]) * 100, 1) if data["total"] else None
+        for level, data in confidence_buckets.items()
+    }
+
+    # Accuracy trend by day, so improvements over time are visible.
+    daily_buckets = {}
+    for f in feedbacks:
+        day = f.created_at.strftime("%Y-%m-%d") if f.created_at else "unknown"
+        bucket = daily_buckets.setdefault(day, {"yes": 0, "total": 0})
+        bucket["total"] += 1
+        if f.helpful == "yes":
+            bucket["yes"] += 1
+
+    trend = [
+        {
+            "date": day,
+            "accuracy": round((data["yes"] / data["total"]) * 100, 1) if data["total"] else 0,
+            "count": data["total"]
+        }
+        for day, data in sorted(daily_buckets.items())
+    ]
+
+    return {
+        "overall_accuracy": overall_accuracy,
+        "total_feedback": total,
+        "by_confidence": by_confidence,
+        "trend": trend
+    }
+
+
 @app.get("/api/incidents/escalated")
 def get_escalated_incidents():
     session = Session()
@@ -149,6 +314,59 @@ def get_escalated_incidents():
     result = [{"id": i.id, "device": i.device_type} for i in escalated]
     session.close()
     return result
+
+
+@app.get("/api/incidents/search")
+def search_similar_incidents(text: str):
+    parsed = parse_incident(text)
+    diagnosis = diagnose_incident(parsed["device"], parsed["category"], parsed["keywords"], text)
+
+    fault_type = None
+    if diagnosis.get("matched") and diagnosis.get("causes"):
+        fault_type = diagnosis["causes"][0].get("fault_type") or None
+
+    session = Session()
+    all_incidents = session.query(Incident).all()
+    session.close()
+
+    if fault_type:
+        matched = [
+            {
+                "id": i.id,
+                "device": i.device_type,
+                "issue": i.incident_description,
+                "severity": i.priority,
+                "status": i.status,
+                "created_at": i.created_at.strftime("%Y-%m-%d %H:%M") if i.created_at else ""
+            }
+            for i in all_incidents if get_top_fault_type(i.diagnosis_json) == fault_type
+        ]
+        match_basis = "fault_type"
+    else:
+        # Fallback: no fault_type could be determined for this query text
+        # (either no confident match, or the matched KB entry isn't tagged).
+        # Fall back to matching on category so the search still returns
+        # something useful, clearly labeled as a weaker match basis.
+        matched = [
+            {
+                "id": i.id,
+                "device": i.device_type,
+                "issue": i.incident_description,
+                "severity": i.priority,
+                "status": i.status,
+                "created_at": i.created_at.strftime("%Y-%m-%d %H:%M") if i.created_at else ""
+            }
+            for i in all_incidents if i.category == parsed["category"]
+        ]
+        match_basis = "category"
+
+    matched.sort(key=lambda x: x["created_at"], reverse=True)
+    return {
+        "query_diagnosis": diagnosis,
+        "fault_type": fault_type,
+        "match_basis": match_basis,
+        "results": matched[:10]
+    }
 
 
 @app.get("/api/incidents/{incident_id}")
@@ -171,13 +389,34 @@ def get_incident_detail(incident_id: int):
 
 @app.get("/api/incidents/{incident_id}/similar")
 def get_similar_incidents(incident_id: int):
-    """
-    Day 7 - Incident Similarity Search.
-    Returns the top-3 most similar PAST incidents (not knowledge base
-    entries) to the given incident, using the existing embedding model.
-    """
-    matches = find_similar_incidents(incident_id)
-    return {"incident_id": incident_id, "similar_incidents": matches}
+    session = Session()
+    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        session.close()
+        return {"error": "Not found"}
+
+    fault_type = get_top_fault_type(incident.diagnosis_json)
+    if not fault_type:
+        session.close()
+        return {"fault_type": None, "similar": []}
+
+    others = session.query(Incident).filter(Incident.id != incident_id).all()
+    session.close()
+
+    similar = []
+    for other in others:
+        if get_top_fault_type(other.diagnosis_json) == fault_type:
+            similar.append({
+                "id": other.id,
+                "device": other.device_type,
+                "issue": other.incident_description,
+                "severity": other.priority,
+                "status": other.status,
+                "created_at": other.created_at.strftime("%Y-%m-%d %H:%M") if other.created_at else ""
+            })
+
+    similar.sort(key=lambda x: x["created_at"], reverse=True)
+    return {"fault_type": fault_type, "similar": similar[:10]}
 
 
 @app.post("/api/incidents/{incident_id}/resolve")
@@ -242,11 +481,24 @@ def create_incident(payload: IncidentCreate):
     incident_status = "Open"
     remediation_log = None
     if diagnosis["matched"] and diagnosis["confidence"] == "high":
-        top_cause = diagnosis["causes"][0]
-        remediation = attempt_remediation(top_cause.get("fault_type", ""), top_cause["verification_command"])
-        if remediation:
-            incident_status = "Auto-Resolved"
-            remediation_log = remediation["log"]
+        # Scan all ranked causes (not just the top one) for the first
+        # cause whose fault_type is on the auto-remediation whitelist.
+        # The top-ranked cause by embedding similarity is not always the
+        # one that matches a remediable fault_type - a near-miss KB entry
+        # (e.g. "port security violation") can outscore the correct
+        # "port_admin_shutdown" entry on wording alone.
+        remediable_cause = next(
+            (c for c in diagnosis["causes"] if is_auto_remediable(c.get("fault_type", ""))),
+            None
+        )
+        if remediable_cause:
+            remediation = attempt_remediation(
+                remediable_cause.get("fault_type", ""),
+                remediable_cause["verification_command"]
+            )
+            if remediation:
+                incident_status = "Auto-Resolved"
+                remediation_log = remediation["log"]
 
     session = Session()
     new_incident = Incident(

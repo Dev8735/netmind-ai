@@ -70,6 +70,7 @@ class Feedback(Base):
     id = Column(Integer, primary_key=True)
     incident_id = Column(Integer, ForeignKey("incidents.id"))
     helpful = Column(String)
+    corrected_cause = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
