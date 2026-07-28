@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { AlertCircle, CheckCircle, Clock, Server, X, Copy } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
+import { AlertCircle, CheckCircle, Clock, Server, X, Copy, GitCompare } from 'lucide-react';
 import Topology from './Topology';
 import Login from './Login';
 import './App.css';
@@ -30,6 +30,9 @@ function App() {
   const [escalatedIds, setEscalatedIds] = useState([]);
   const [recurringData, setRecurringData] = useState([]);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
+  const [performanceData, setPerformanceData] = useState(null);
+  const [similarIncidents, setSimilarIncidents] = useState([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
 
   const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
@@ -49,10 +52,17 @@ function App() {
       .catch(err => console.error('Failed to fetch analytics:', err));
   };
 
+  const fetchPerformance = () => {
+    axios.get('http://127.0.0.1:8000/api/analytics/performance')
+      .then(res => setPerformanceData(res.data))
+      .catch(err => console.error('Failed to fetch performance stats:', err));
+  };
+
   useEffect(() => {
     fetchIncidents();
     fetchSignals();
     fetchRecurring();
+    fetchPerformance();
 
     let ws;
     let reconnectTimeout;
@@ -131,11 +141,25 @@ function App() {
     setAlertText('');
     setCopied(false);
     setFeedbackGiven(false);
+    setSimilarIncidents([]);
     try {
       const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${id}`);
       setSelectedDetail(res.data);
+      fetchSimilarIncidents(id);
     } catch (err) {
       console.error('Failed to fetch detail:', err);
+    }
+  };
+
+  const fetchSimilarIncidents = async (id) => {
+    setLoadingSimilar(true);
+    try {
+      const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${id}/similar`);
+      setSimilarIncidents(res.data.similar_incidents || []);
+    } catch (err) {
+      console.error('Failed to fetch similar incidents:', err);
+    } finally {
+      setLoadingSimilar(false);
     }
   };
 
@@ -174,6 +198,7 @@ function App() {
     try {
       await axios.post(`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/feedback`, { helpful });
       setFeedbackGiven(true);
+      fetchPerformance();
     } catch (err) {
       console.error('Failed to submit feedback:', err);
     }
@@ -204,6 +229,14 @@ function App() {
     color: SEVERITY_COLORS[name],
   }));
   const hasSeverityData = severityData.some(s => s.value > 0);
+
+  const CONFIDENCE_ORDER = ['high', 'medium', 'low'];
+  const CONFIDENCE_COLORS = { high: '#22c55e', medium: '#eab308', low: '#ef4444' };
+  const confidenceChartData = performanceData
+    ? Object.entries(performanceData.by_confidence)
+        .sort((a, b) => CONFIDENCE_ORDER.indexOf(a[0]) - CONFIDENCE_ORDER.indexOf(b[0]))
+        .map(([level, accuracy]) => ({ level, accuracy, color: CONFIDENCE_COLORS[level] || '#3b82f6' }))
+    : [];
 
   return (
     <div className="dashboard">
@@ -283,6 +316,54 @@ function App() {
               <Bar dataKey="count" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
+        )}
+      </section>
+
+      <section className="panel">
+        <h2>AI Performance Dashboard <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8'}}>(accuracy from engineer feedback)</span></h2>
+        {!performanceData || performanceData.total_feedback === 0 ? (
+          <p style={{color:'#64748b', fontSize:'13px'}}>No feedback yet - accuracy stats will populate as engineers rate diagnoses helpful or not helpful.</p>
+        ) : (
+          <>
+            <div style={{display:'flex', alignItems:'baseline', gap:'12px', marginBottom:'16px'}}>
+              <span style={{fontSize:'32px', fontWeight:700, color:'#22c55e'}}>{performanceData.overall_accuracy}%</span>
+              <span style={{fontSize:'13px', color:'#94a3b8'}}>
+                Overall accuracy ({performanceData.total_feedback} incident{performanceData.total_feedback !== 1 ? 's' : ''} rated)
+              </span>
+            </div>
+
+            {confidenceChartData.length > 0 && (
+              <>
+                <h3 style={{fontSize:'14px', marginBottom:'8px'}}>Accuracy by Confidence Level</h3>
+                <ResponsiveContainer width="100%" height={Math.max(120, confidenceChartData.length * 50)}>
+                  <BarChart data={confidenceChartData} layout="vertical" margin={{left: 20}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis type="number" domain={[0, 100]} stroke="#94a3b8" />
+                    <YAxis type="category" dataKey="level" stroke="#94a3b8" width={80} tick={{fontSize: 11}} />
+                    <Tooltip contentStyle={{background:'#1e293b', border:'1px solid #334155'}} formatter={(v) => `${v}%`} />
+                    <Bar dataKey="accuracy">
+                      {confidenceChartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </>
+            )}
+
+            {performanceData.trend.length > 1 && (
+              <>
+                <h3 style={{fontSize:'14px', margin:'16px 0 8px'}}>Accuracy Trend</h3>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={performanceData.trend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="date" stroke="#94a3b8" tick={{fontSize: 11}} />
+                    <YAxis domain={[0, 100]} stroke="#94a3b8" />
+                    <Tooltip contentStyle={{background:'#1e293b', border:'1px solid #334155'}} formatter={(v) => `${v}%`} />
+                    <Line type="monotone" dataKey="accuracy" stroke="#3b82f6" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </>
+            )}
+          </>
         )}
       </section>
 
@@ -431,6 +512,33 @@ function App() {
                 No confident match found in knowledge base. This incident requires manual engineer review.
               </div>
             )}
+
+            <div className="similar-incidents-section">
+              <h3><GitCompare size={16} style={{verticalAlign: 'middle', marginRight: '6px'}} />Similar Past Incidents</h3>
+              {loadingSimilar ? (
+                <p style={{color:'#64748b', fontSize:'13px'}}>Searching past incidents...</p>
+              ) : similarIncidents.length === 0 ? (
+                <p style={{color:'#64748b', fontSize:'13px'}}>No sufficiently similar past incidents found.</p>
+              ) : (
+                <div className="similar-incidents-list">
+                  {similarIncidents.map((s) => (
+                    <div key={s.id} className="similar-incident-row">
+                      <div className="similar-incident-main">
+                        <span className="similar-incident-device">{s.device}</span>
+                        <span className="similar-incident-issue">{s.issue}</span>
+                      </div>
+                      <div className="similar-incident-meta">
+                        <span className={`badge ${s.severity.toLowerCase()}`}>{s.severity}</span>
+                        <span className={`status-pill ${s.status.toLowerCase().replace(' ', '-')}`}>
+                          {s.status === 'Auto-Resolved' ? '⚡ Auto-Resolved' : s.status}
+                        </span>
+                        <span className="similar-incident-score">match: {s.similarity_score}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {selectedDetail.diagnosis && selectedDetail.diagnosis.matched && (
               <div className="feedback-row">
