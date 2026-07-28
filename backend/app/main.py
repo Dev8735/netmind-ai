@@ -136,6 +136,71 @@ def get_recurring_faults():
     return [{"label": label, "count": count} for label, count in top_10]
 
 
+@app.get("/api/analytics/performance")
+def get_performance_stats():
+    session = Session()
+    feedbacks = session.query(Feedback).all()
+    incident_ids = [f.incident_id for f in feedbacks]
+    incidents_map = {}
+    if incident_ids:
+        incidents_map = {
+            i.id: i for i in session.query(Incident).filter(Incident.id.in_(incident_ids)).all()
+        }
+    session.close()
+
+    total = len(feedbacks)
+    helpful_yes = sum(1 for f in feedbacks if f.helpful == "yes")
+    overall_accuracy = round((helpful_yes / total) * 100, 1) if total else None
+
+    # Accuracy broken down by the confidence level the diagnosis engine
+    # originally assigned - the most useful stat for judging whether
+    # "high confidence" claims can actually be trusted.
+    confidence_buckets = {}
+    for f in feedbacks:
+        incident = incidents_map.get(f.incident_id)
+        if not incident or not incident.diagnosis_json:
+            continue
+        try:
+            diagnosis = json.loads(incident.diagnosis_json)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        conf = diagnosis.get("confidence", "unknown")
+        bucket = confidence_buckets.setdefault(conf, {"yes": 0, "total": 0})
+        bucket["total"] += 1
+        if f.helpful == "yes":
+            bucket["yes"] += 1
+
+    by_confidence = {
+        level: round((data["yes"] / data["total"]) * 100, 1) if data["total"] else None
+        for level, data in confidence_buckets.items()
+    }
+
+    # Accuracy trend by day, so improvements over time are visible.
+    daily_buckets = {}
+    for f in feedbacks:
+        day = f.created_at.strftime("%Y-%m-%d") if f.created_at else "unknown"
+        bucket = daily_buckets.setdefault(day, {"yes": 0, "total": 0})
+        bucket["total"] += 1
+        if f.helpful == "yes":
+            bucket["yes"] += 1
+
+    trend = [
+        {
+            "date": day,
+            "accuracy": round((data["yes"] / data["total"]) * 100, 1) if data["total"] else 0,
+            "count": data["total"]
+        }
+        for day, data in sorted(daily_buckets.items())
+    ]
+
+    return {
+        "overall_accuracy": overall_accuracy,
+        "total_feedback": total,
+        "by_confidence": by_confidence,
+        "trend": trend
+    }
+
+
 @app.get("/api/incidents/escalated")
 def get_escalated_incidents():
     session = Session()
