@@ -15,6 +15,7 @@ from .alert_generator import generate_alert
 from .report_generator import generate_pdf_report
 from .auth import verify_password, create_access_token, ADMIN_USERNAME
 from .remediation_engine import attempt_remediation, is_auto_remediable
+from .conversation_engine import answer_question
 
 load_dotenv()
 
@@ -55,11 +56,20 @@ class IncidentCreate(BaseModel):
 
 class FeedbackCreate(BaseModel):
     helpful: str
+    corrected_cause: str | None = None
 
 
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class AdminVerifyRequest(BaseModel):
+    password: str
+
+
+class AskQuestionRequest(BaseModel):
+    question: str
 
 
 @app.websocket("/ws/incidents")
@@ -101,6 +111,18 @@ def login(payload: LoginRequest):
         return {"error": "Invalid credentials"}
     token = create_access_token(payload.username)
     return {"token": token}
+
+
+@app.post("/api/admin/verify")
+def verify_admin_panel(payload: AdminVerifyRequest):
+    # Separate, independent secret from the main app login - gates access
+    # to internal/explainability tooling (pipeline diagram, decision tree,
+    # knowledge graph) that isn't needed for day-to-day incident triage.
+    # Set ADMIN_PANEL_PASSWORD in backend/.env to override the default.
+    expected = os.getenv("ADMIN_PANEL_PASSWORD", "netmind_admin")
+    if payload.password != expected:
+        return {"valid": False}
+    return {"valid": True}
 
 
 @app.get("/api/incidents")
@@ -302,6 +324,53 @@ def get_performance_stats():
     }
 
 
+@app.get("/api/corrections")
+def get_corrections():
+    """Learning Mode log: every piece of feedback where an engineer
+    marked a diagnosis unhelpful and specified what the actual cause
+    was. Shows what the AI originally said vs what was correct, so
+    this becomes visible, demonstrable evidence the system captures
+    its own mistakes rather than a black-box accuracy number."""
+    session = Session()
+    corrections = (
+        session.query(Feedback)
+        .filter(Feedback.helpful == "no", Feedback.corrected_cause.isnot(None))
+        .order_by(Feedback.created_at.desc())
+        .all()
+    )
+    incident_ids = [c.incident_id for c in corrections]
+    incidents_map = {}
+    if incident_ids:
+        incidents_map = {
+            i.id: i for i in session.query(Incident).filter(Incident.id.in_(incident_ids)).all()
+        }
+    session.close()
+
+    results = []
+    for c in corrections:
+        incident = incidents_map.get(c.incident_id)
+        if not incident:
+            continue
+        original_cause = None
+        if incident.diagnosis_json:
+            try:
+                diagnosis = json.loads(incident.diagnosis_json)
+                if diagnosis.get("matched") and diagnosis.get("causes"):
+                    original_cause = diagnosis["causes"][0].get("cause")
+            except (json.JSONDecodeError, TypeError):
+                pass
+        results.append({
+            "incident_id": c.incident_id,
+            "device": incident.device_type,
+            "issue": incident.incident_description,
+            "ai_said": original_cause,
+            "corrected_to": c.corrected_cause,
+            "created_at": c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else ""
+        })
+
+    return {"total": len(results), "corrections": results}
+
+
 @app.get("/api/incidents/escalated")
 def get_escalated_incidents():
     session = Session()
@@ -435,11 +504,42 @@ def resolve_incident(incident_id: int):
 @app.post("/api/incidents/{incident_id}/feedback")
 def submit_feedback(incident_id: int, payload: FeedbackCreate):
     session = Session()
-    feedback = Feedback(incident_id=incident_id, helpful=payload.helpful)
+    feedback = Feedback(
+        incident_id=incident_id,
+        helpful=payload.helpful,
+        corrected_cause=payload.corrected_cause
+    )
     session.add(feedback)
     session.commit()
     session.close()
     return {"status": "recorded"}
+
+
+@app.post("/api/incidents/{incident_id}/ask")
+def ask_about_incident(incident_id: int, payload: AskQuestionRequest):
+    """Scoped Q&A: answers are grounded only in this incident's own
+    diagnosis (causes, evidence, remediation) plus its similar past
+    incidents - not general knowledge. Uses Ollama when available,
+    falls back to rule-based canned answers otherwise."""
+    session = Session()
+    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        session.close()
+        return {"error": "Not found"}
+
+    diagnosis = json.loads(incident.diagnosis_json) if incident.diagnosis_json else None
+
+    fault_type = get_top_fault_type(incident.diagnosis_json)
+    similar_incidents = []
+    if fault_type:
+        others = session.query(Incident).filter(Incident.id != incident_id).all()
+        for other in others:
+            if get_top_fault_type(other.diagnosis_json) == fault_type:
+                similar_incidents.append({"status": other.status})
+    session.close()
+
+    answer = answer_question(payload.question, incident, diagnosis, similar_incidents)
+    return {"answer": answer}
 
 
 @app.get("/api/incidents/{incident_id}/alert")

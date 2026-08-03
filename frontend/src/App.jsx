@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
-import { AlertCircle, CheckCircle, Clock, Server, X, Copy, GitCompare } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Server, X, Copy, Lock } from 'lucide-react';
 import Topology from './Topology';
+import AdminPanel from './AdminPanel';
 import Login from './Login';
 import './App.css';
 
@@ -15,6 +16,7 @@ const SEVERITY_COLORS = {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('netmind_token'));
+  const [route, setRoute] = useState(window.location.hash);
   const [incidentText, setIncidentText] = useState('');
   const [incidents, setIncidents] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -30,9 +32,17 @@ function App() {
   const [escalatedIds, setEscalatedIds] = useState([]);
   const [recurringData, setRecurringData] = useState([]);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
+  const [showCorrectionForm, setShowCorrectionForm] = useState(false);
+  const [correctionChoice, setCorrectionChoice] = useState('');
+  const [correctionText, setCorrectionText] = useState('');
+  const [correctionsData, setCorrectionsData] = useState(null);
   const [performanceData, setPerformanceData] = useState(null);
   const [similarIncidents, setSimilarIncidents] = useState([]);
-  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [similarFaultType, setSimilarFaultType] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+
 
   const fetchIncidents = () => {
     axios.get('http://127.0.0.1:8000/api/incidents')
@@ -58,11 +68,25 @@ function App() {
       .catch(err => console.error('Failed to fetch performance stats:', err));
   };
 
+  const fetchSimilarIncidents = (id) => {
+    axios.get(`http://127.0.0.1:8000/api/incidents/${id}/similar`)
+      .then(res => {
+        setSimilarFaultType(res.data.fault_type);
+        setSimilarIncidents(res.data.similar || []);
+      })
+      .catch(err => {
+        console.error('Failed to fetch similar incidents:', err);
+        setSimilarFaultType(null);
+        setSimilarIncidents([]);
+      });
+  };
+
   useEffect(() => {
     fetchIncidents();
     fetchSignals();
     fetchRecurring();
     fetchPerformance();
+    fetchCorrections();
 
     let ws;
     let reconnectTimeout;
@@ -142,6 +166,10 @@ function App() {
     setCopied(false);
     setFeedbackGiven(false);
     setSimilarIncidents([]);
+    setSimilarFaultType(null);
+    setShowCorrectionForm(false);
+    setCorrectionChoice('');
+    setCorrectionText('');
     try {
       const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${id}`);
       setSelectedDetail(res.data);
@@ -151,15 +179,19 @@ function App() {
     }
   };
 
-  const fetchSimilarIncidents = async (id) => {
-    setLoadingSimilar(true);
+  const runSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchResults(null);
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${id}/similar`);
-      setSimilarIncidents(res.data.similar_incidents || []);
+      const res = await axios.get('http://127.0.0.1:8000/api/incidents/search', {
+        params: { text: searchQuery }
+      });
+      setSearchResults(res.data);
     } catch (err) {
-      console.error('Failed to fetch similar incidents:', err);
+      console.error('Failed to search incidents:', err);
     } finally {
-      setLoadingSimilar(false);
+      setSearching(false);
     }
   };
 
@@ -194,14 +226,31 @@ function App() {
     }
   };
 
-  const submitFeedback = async (helpful) => {
+  const submitFeedback = async (helpful, correctedCause = null) => {
     try {
-      await axios.post(`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/feedback`, { helpful });
+      await axios.post(`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/feedback`, {
+        helpful,
+        corrected_cause: correctedCause
+      });
       setFeedbackGiven(true);
+      setShowCorrectionForm(false);
       fetchPerformance();
+      if (correctedCause) fetchCorrections();
     } catch (err) {
       console.error('Failed to submit feedback:', err);
     }
+  };
+
+  const fetchCorrections = () => {
+    axios.get('http://127.0.0.1:8000/api/corrections')
+      .then(res => setCorrectionsData(res.data))
+      .catch(err => console.error('Failed to fetch corrections:', err));
+  };
+
+  const submitCorrection = () => {
+    const finalCause = correctionChoice === 'other' ? correctionText.trim() : correctionChoice;
+    if (!finalCause) return;
+    submitFeedback('no', finalCause);
   };
 
 
@@ -219,8 +268,18 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    const onHashChange = () => setRoute(window.location.hash);
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   if (!isAuthenticated) {
     return <Login onLogin={() => setIsAuthenticated(true)} />;
+  }
+
+  if (route === '#/admin') {
+    return <AdminPanel />;
   }
 
   const severityData = ['Critical', 'High', 'Medium', 'Low'].map(name => ({
@@ -240,8 +299,14 @@ function App() {
 
   return (
     <div className="dashboard">
-      <header className="topbar">
+      <header className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1><Server size={24} /> NetMind AI - Network Fault Diagnosis Assistant</h1>
+        <a
+          href="#/admin"
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '13px', textDecoration: 'none' }}
+        >
+          <Lock size={14} /> Admin Panel
+        </a>
       </header>
 
       <section className="summary-cards">
@@ -368,6 +433,80 @@ function App() {
       </section>
 
       <section className="panel">
+        <h2>Corrections Log <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8'}}>(Learning Mode - what the AI got wrong)</span></h2>
+        {!correctionsData || correctionsData.total === 0 ? (
+          <p style={{color:'#64748b', fontSize:'13px'}}>
+            No corrections logged yet - when an engineer marks a diagnosis unhelpful and
+            specifies the actual cause, it will appear here.
+          </p>
+        ) : (
+          <table>
+            <thead>
+              <tr><th>Device</th><th>Issue</th><th>AI Said</th><th>Actually Was</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+              {correctionsData.corrections.map((c, idx) => (
+                <tr key={idx} onClick={() => openDetail(c.incident_id)} style={{ cursor: 'pointer' }}>
+                  <td>{c.device}</td>
+                  <td>{c.issue}</td>
+                  <td style={{ color: '#ef4444' }}>{c.ai_said || '—'}</td>
+                  <td style={{ color: '#22c55e' }}>{c.corrected_to}</td>
+                  <td style={{ fontSize: '11px', color: '#94a3b8' }}>{c.created_at}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="panel">
+        <h2>Find Similar Incidents <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8'}}>(search by diagnosed cause)</span></h2>
+        <textarea
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Describe an issue to find past incidents diagnosed with the same cause..."
+          rows={3}
+          disabled={searching}
+        />
+        <button onClick={runSearch} disabled={searching}>
+          {searching ? 'Searching...' : 'Search'}
+        </button>
+
+        {searchResults && (
+          <div style={{marginTop:'12px'}}>
+            {searchResults.fault_type ? (
+              <p style={{fontSize:'12px', color:'#94a3b8'}}>
+                Matched by diagnosed cause: <strong>{searchResults.fault_type}</strong>
+              </p>
+            ) : (
+              <p style={{fontSize:'12px', color:'#94a3b8'}}>
+                No specific cause classification available for this text — showing incidents in the same category instead.
+              </p>
+            )}
+            {searchResults.results.length === 0 ? (
+              <p style={{color:'#64748b', fontSize:'13px'}}>No matching past incidents found.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr><th>Device</th><th>Issue</th><th>Status</th><th>Date</th></tr>
+                </thead>
+                <tbody>
+                  {searchResults.results.map(r => (
+                    <tr key={r.id} onClick={() => openDetail(r.id)} style={{ cursor: 'pointer' }}>
+                      <td>{r.device}</td>
+                      <td>{r.issue}</td>
+                      <td>{r.status === 'Auto-Resolved' ? '⚡ Auto-Resolved' : r.status}</td>
+                      <td style={{fontSize:'11px', color:'#94a3b8'}}>{r.created_at}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="panel">
         <h2>Incident History <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8'}}>(click a row for details)</span></h2>
         <table>
           <thead>
@@ -467,6 +606,32 @@ function App() {
             <h3>Network Topology</h3>
             <Topology affectedDevice={selectedDetail.device} />
 
+            {similarIncidents.length > 0 && (
+              <div className="panel" style={{margin:'16px 0', padding:'12px'}}>
+                <h3 style={{marginTop:0}}>
+                  Similar Past Incidents
+                  <span style={{fontWeight:400, fontSize:'12px', color:'#94a3b8', marginLeft:'8px'}}>
+                    (same diagnosed cause: {similarFaultType})
+                  </span>
+                </h3>
+                <table>
+                  <thead>
+                    <tr><th>Device</th><th>Issue</th><th>Status</th><th>Date</th></tr>
+                  </thead>
+                  <tbody>
+                    {similarIncidents.map(s => (
+                      <tr key={s.id} onClick={() => openDetail(s.id)} style={{ cursor: 'pointer' }}>
+                        <td>{s.device}</td>
+                        <td>{s.issue}</td>
+                        <td>{s.status === 'Auto-Resolved' ? '⚡ Auto-Resolved' : s.status}</td>
+                        <td style={{fontSize:'11px', color:'#94a3b8'}}>{s.created_at}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {selectedDetail.diagnosis && selectedDetail.diagnosis.matched ? (
               <div>
                 <h3>
@@ -513,41 +678,53 @@ function App() {
               </div>
             )}
 
-            <div className="similar-incidents-section">
-              <h3><GitCompare size={16} style={{verticalAlign: 'middle', marginRight: '6px'}} />Similar Past Incidents</h3>
-              {loadingSimilar ? (
-                <p style={{color:'#64748b', fontSize:'13px'}}>Searching past incidents...</p>
-              ) : similarIncidents.length === 0 ? (
-                <p style={{color:'#64748b', fontSize:'13px'}}>No sufficiently similar past incidents found.</p>
-              ) : (
-                <div className="similar-incidents-list">
-                  {similarIncidents.map((s) => (
-                    <div key={s.id} className="similar-incident-row">
-                      <div className="similar-incident-main">
-                        <span className="similar-incident-device">{s.device}</span>
-                        <span className="similar-incident-issue">{s.issue}</span>
-                      </div>
-                      <div className="similar-incident-meta">
-                        <span className={`badge ${s.severity.toLowerCase()}`}>{s.severity}</span>
-                        <span className={`status-pill ${s.status.toLowerCase().replace(' ', '-')}`}>
-                          {s.status === 'Auto-Resolved' ? '⚡ Auto-Resolved' : s.status}
-                        </span>
-                        <span className="similar-incident-score">match: {s.similarity_score}</span>
+            {selectedDetail.diagnosis && selectedDetail.diagnosis.matched && (
+              <div className="feedback-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}>
+                {!feedbackGiven ? (
+                  !showCorrectionForm ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className="feedback-label">Was this diagnosis helpful?</span>
+                      <button onClick={() => submitFeedback('yes')} className="feedback-btn yes">👍 Yes</button>
+                      <button onClick={() => setShowCorrectionForm(true)} className="feedback-btn no">👎 No</button>
+                    </div>
+                  ) : (
+                    <div style={{ width: '100%' }}>
+                      <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '8px' }}>
+                        What was the actual cause? (helps the system learn from this mistake)
+                      </p>
+                      <select
+                        value={correctionChoice}
+                        onChange={(e) => setCorrectionChoice(e.target.value)}
+                        style={{
+                          width: '100%', padding: '8px', marginBottom: '8px',
+                          background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155',
+                          borderRadius: '6px', fontSize: '13px'
+                        }}
+                      >
+                        <option value="">Select the correct cause...</option>
+                        {selectedDetail.diagnosis.causes.map((c, idx) => (
+                          <option key={`cause-${idx}`} value={c.cause}>{c.cause}</option>
+                        ))}
+                        {selectedDetail.diagnosis.rejected_causes && selectedDetail.diagnosis.rejected_causes.map((r, idx) => (
+                          <option key={`rejected-${idx}`} value={r.cause}>{r.cause} (previously ruled out)</option>
+                        ))}
+                        <option value="other">Other (please specify)</option>
+                      </select>
+                      {correctionChoice === 'other' && (
+                        <textarea
+                          value={correctionText}
+                          onChange={(e) => setCorrectionText(e.target.value)}
+                          placeholder="Describe the actual cause..."
+                          rows={2}
+                          style={{ marginBottom: '8px' }}
+                        />
+                      )}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={submitCorrection} className="feedback-btn no">Submit Correction</button>
+                        <button onClick={() => setShowCorrectionForm(false)} style={{ background: '#334155' }}>Cancel</button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {selectedDetail.diagnosis && selectedDetail.diagnosis.matched && (
-              <div className="feedback-row">
-                {!feedbackGiven ? (
-                  <>
-                    <span className="feedback-label">Was this diagnosis helpful?</span>
-                    <button onClick={() => submitFeedback('yes')} className="feedback-btn yes">👍 Yes</button>
-                    <button onClick={() => submitFeedback('no')} className="feedback-btn no">👎 No</button>
-                  </>
+                  )
                 ) : (
                   <span className="feedback-thanks">Thanks for the feedback!</span>
                 )}
