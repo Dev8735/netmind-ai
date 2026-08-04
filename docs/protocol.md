@@ -23,6 +23,35 @@ reporting — rather than a custom or simulated text format.
 
 ## Message Format
 
+Each message follows the RFC 5424 structured format:
+
+```
+<PRI>VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [STRUCTURED-DATA] MSG
+```
+
+Example, as actually sent by the simulator:
+
+```
+<134>1 2026-07-28T05:03:11.482Z Server-Room-Switch NetMind-Agent 1024 ID47 - Port 4 admin shutdown detected, no traffic passing
+```
+
+Breaking that down:
+- `<134>` — PRI (priority): facility 16 (local0) × 8 + severity 6 (informational)
+- `1` — VERSION (RFC 5424)
+- `2026-07-28T05:03:11.482Z` — TIMESTAMP, ISO 8601 with milliseconds, UTC
+- `Server-Room-Switch` — HOSTNAME, the reporting device
+- `NetMind-Agent` — APP-NAME, the simulated agent process
+- `1024` — PROCID
+- `ID47` — MSGID
+- `-` — STRUCTURED-DATA (unused, per spec this is the "nil" value)
+- Everything after the last `-` is the free-text MSG body — this is what
+  the NLP parser and diagnosis engine actually process
+
+The listener extracts HOSTNAME (mapped to `device`) and the MSG body (mapped to
+`incident_description`) and hands them to the same NLP parsing and diagnosis pipeline
+used for manually-submitted incidents — there is no separate code path for
+Syslog-sourced vs. manually-entered incidents.
+
 ## Why Syslog Over SNMP
 
 Syslog was chosen over SNMP traps for two reasons:
