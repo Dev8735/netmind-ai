@@ -535,10 +535,10 @@ def ask_about_incident(incident_id: int, payload: AskQuestionRequest):
         others = session.query(Incident).filter(Incident.id != incident_id).all()
         for other in others:
             if get_top_fault_type(other.diagnosis_json) == fault_type:
-                similar_incidents.append({"status": other.status})
+                similar_incidents.append({"device": other.device_type, "status": other.status})
     session.close()
 
-    answer = answer_question(payload.question, incident, diagnosis, similar_incidents)
+    answer = answer_question(payload.question, diagnosis, similar_incidents)
     return {"answer": answer}
 
 
