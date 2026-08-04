@@ -36,6 +36,9 @@ function App() {
   const [correctionChoice, setCorrectionChoice] = useState('');
   const [correctionText, setCorrectionText] = useState('');
   const [correctionsData, setCorrectionsData] = useState(null);
+  const [conversation, setConversation] = useState([]);
+  const [askText, setAskText] = useState('');
+  const [asking, setAsking] = useState(false);
   const [performanceData, setPerformanceData] = useState(null);
   const [similarIncidents, setSimilarIncidents] = useState([]);
   const [similarFaultType, setSimilarFaultType] = useState(null);
@@ -170,6 +173,8 @@ function App() {
     setShowCorrectionForm(false);
     setCorrectionChoice('');
     setCorrectionText('');
+    setConversation([]);
+    setAskText('');
     try {
       const res = await axios.get(`http://127.0.0.1:8000/api/incidents/${id}`);
       setSelectedDetail(res.data);
@@ -252,6 +257,29 @@ function App() {
     if (!finalCause) return;
     submitFeedback('no', finalCause);
   };
+
+  const askAI = async (question) => {
+    if (!question.trim() || !selectedDetail) return;
+    setAsking(true);
+    try {
+      const res = await axios.post(`http://127.0.0.1:8000/api/incidents/${selectedDetail.id}/ask`, { question });
+      setConversation(prev => [...prev, { question, answer: res.data.answer }]);
+      setAskText('');
+    } catch (err) {
+      console.error('Failed to ask AI:', err);
+      setConversation(prev => [...prev, { question, answer: 'Failed to get an answer - is the backend running?' }]);
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  const CANNED_QUESTIONS = [
+    'Why this cause?',
+    'How confident is this?',
+    'What if remediation fails?',
+    'What should I check first?',
+    'Are there similar past incidents?',
+  ];
 
 
   const runTests = async () => {
@@ -730,6 +758,51 @@ function App() {
                 )}
               </div>
             )}
+
+            <div className="alert-section" style={{ marginTop: '16px' }}>
+              <h3>Ask NetMind AI</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                {CANNED_QUESTIONS.map((q, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => askAI(q)}
+                    disabled={asking}
+                    style={{ background: '#334155', fontSize: '12px', padding: '6px 10px' }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                <textarea
+                  value={askText}
+                  onChange={(e) => setAskText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askAI(askText); } }}
+                  placeholder="Ask a question about this incident..."
+                  rows={1}
+                  disabled={asking}
+                  style={{ flex: 1 }}
+                />
+                <button onClick={() => askAI(askText)} disabled={asking || !askText.trim()}>
+                  {asking ? 'Asking...' : 'Ask'}
+                </button>
+              </div>
+
+              {conversation.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {conversation.map((turn, idx) => (
+                    <div key={idx}>
+                      <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '4px' }}>
+                        <strong>Q:</strong> {turn.question}
+                      </p>
+                      <p style={{ fontSize: '13px', whiteSpace: 'pre-line' }}>
+                        <strong>A:</strong> {turn.answer}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="report-section">
               <a
