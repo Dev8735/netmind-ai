@@ -2090,3 +2090,333 @@ body,
     grid-template-columns: minmax(0, 1.28fr) minmax(0, .72fr) !important;
   }
 }
+
+
+/* FINAL BLACK DARK MODE — WINDOWS 11 DESKTOP */
+html, body, #root {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+body { color: #ffffff !important; }
+
+.app-shell, .app-shell.dark-theme,
+.app-shell .main-area, .app-shell .content {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar */
+.app-shell .sidebar {
+  background: #000000 !important;
+  border-right: 1px solid #222222 !important;
+}
+.app-shell .brand, .app-shell .sidebar-status, .app-shell .sidebar-footer {
+  border-color: #222222 !important;
+}
+.app-shell .brand strong, .app-shell .brand small,
+.app-shell .sidebar-status strong, .app-shell .sidebar-status span,
+.app-shell .nav-label, .app-shell .nav-item, .app-shell .sidebar-footer {
+  color: #ffffff !important;
+}
+.app-shell .brand small, .app-shell .sidebar-status span,
+.app-shell .sidebar-footer, .app-shell .nav-label { opacity: .62; }
+
+.app-shell .brand-mark {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+.app-shell .brand-mark svg, .app-shell .brand-mark svg * {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+.app-shell .nav-item svg, .app-shell .nav-item svg *,
+.app-shell .sidebar-status svg, .app-shell .sidebar-status svg * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+.app-shell .nav-item:hover, .app-shell .nav-item.active {
+  color: #ffffff !important;
+  background: #151515 !important;
+  border-color: #3a3a3a !important;
+}
+.app-shell .nav-item.active {
+  box-shadow: inset 3px 0 0 #ffffff !important;
+}
+
+/* Top bar */
+.app-shell .topbar {
+  background: #000000 !important;
+  border-bottom: 1px solid #222222 !important;
+}
+.app-shell .breadcrumb, .app-shell .breadcrumb strong,
+.app-shell .topbar-right, .app-shell .topbar-right span,
+.app-shell .topbar-right strong {
+  color: #ffffff !important;
+}
+.app-shell .breadcrumb { opacity: .62; }
+.app-shell .topbar svg, .app-shell .topbar svg *,
+.app-shell .topbar-right svg, .app-shell .topbar-right svg * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Headings */
+.app-shell .page-heading h1,
+.app-shell .page-heading p, .app-shell .page-heading label,
+.app-shell .page-heading * {
+  color: #ffffff !important;
+}
+.app-shell .page-heading h1 {
+  font-size: 36px !important;
+  font-weight: 800 !important;
+}
+.app-shell .page-heading p, .app-shell .page-heading label { opacity: .65; }
+
+.app-shell .connection-box, .app-shell .connection-box *,
+.app-shell .ai-live, .app-shell .ai-live *,
+.app-shell .heading-metrics, .app-shell .heading-metrics * {
+  color: #ffffff !important;
+}
+.app-shell .connection-box, .app-shell .ai-live,
+.app-shell .heading-metrics b {
+  background: #0a0a0a !important;
+  border-color: #303030 !important;
+}
+
+/* KPI cards */
+.app-shell .stat-card {
+  background: #080808 !important;
+  border-color: #292929 !important;
+}
+.app-shell .stat-card *, .app-shell .stat-card strong,
+.app-shell .stat-card span, .app-shell .stat-card small {
+  color: #ffffff !important;
+}
+.app-shell .stat-card span { opacity: .78; }
+.app-shell .stat-card small { opacity: .50; }
+.app-shell .stat-icon, .app-shell .stat-icon svg,
+.app-shell .stat-icon svg * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+.app-shell .stat-icon {
+  background: #151515 !important;
+  border-color: #333333 !important;
+}
+
+/* Panels */
+.app-shell .panel {
+  background: #080808 !important;
+  border-color: #292929 !important;
+  color: #ffffff !important;
+}
+.app-shell .panel *, .app-shell .section-header *,
+.app-shell .section-header h2, .app-shell .section-header p {
+  color: #ffffff !important;
+}
+.app-shell .section-header p { opacity: .55; }
+.app-shell .section-icon, .app-shell .section-icon svg,
+.app-shell .section-icon svg * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+.app-shell .section-icon {
+  background: #151515 !important;
+  border-color: #333333 !important;
+}
+.app-shell a, .app-shell .link-button, .app-shell .table-action {
+  color: #ffffff !important;
+}
+
+/* Incidents / states */
+.app-shell .incident-row {
+  background: #101010 !important;
+  border-color: #242424 !important;
+  color: #ffffff !important;
+}
+.app-shell .incident-row *, .app-shell .incident-row-main strong,
+.app-shell .incident-row-main > span, .app-shell .incident-row-main small {
+  color: #ffffff !important;
+}
+.app-shell .incident-row-main > span { opacity: .82; }
+.app-shell .incident-row-main small { opacity: .48; }
+.app-shell .badge, .app-shell .status-pill, .app-shell .risk {
+  color: #ffffff !important;
+}
+.app-shell .empty-state, .app-shell .empty-state *,
+.app-shell .empty-state strong, .app-shell .empty-state p {
+  color: #ffffff !important;
+}
+.app-shell .empty-state strong { opacity: .85; }
+.app-shell .empty-state p { opacity: .48; }
+.app-shell .empty-state > span {
+  color: #ffffff !important;
+  background: #111111 !important;
+  border-color: #333333 !important;
+}
+.app-shell .empty-state > span svg, .app-shell .empty-state > span svg * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Signals */
+.app-shell .signal-row, .app-shell .signal-row *,
+.app-shell .signal-device, .app-shell .signal-message,
+.app-shell .signal-time {
+  color: #ffffff !important;
+}
+.app-shell .signal-time { opacity: .45; }
+.app-shell .signal-dot.ok, .app-shell .signal-dot.fault {
+  background: #ffffff !important;
+}
+
+/* Forms */
+.app-shell input, .app-shell textarea, .app-shell select {
+  color: #ffffff !important;
+  background: #050505 !important;
+  border-color: #303030 !important;
+}
+.app-shell input::placeholder, .app-shell textarea::placeholder {
+  color: #ffffff !important;
+  opacity: .35;
+}
+.app-shell button, .app-shell .primary-button, .app-shell .secondary-button {
+  color: #ffffff !important;
+}
+.app-shell .primary-button {
+  color: #000000 !important;
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+}
+.app-shell .secondary-button, .app-shell .table-action {
+  background: #111111 !important;
+  border-color: #3a3a3a !important;
+}
+
+/* Tables */
+.app-shell .data-table, .app-shell .data-table *,
+.app-shell .data-table th, .app-shell .data-table td {
+  color: #ffffff !important;
+}
+.app-shell .data-table th {
+  background: #111111 !important;
+  border-color: #333333 !important;
+}
+.app-shell .data-table td { border-color: #222222 !important; }
+.app-shell .data-table tbody tr:hover { background: #151515 !important; }
+.app-shell .device-cell, .app-shell .mono, .app-shell .muted {
+  color: #ffffff !important;
+}
+
+/* AI cards */
+.app-shell .ai-card, .app-shell .ai-card *,
+.app-shell .ai-card strong, .app-shell .ai-card p,
+.app-shell .ai-card small {
+  color: #ffffff !important;
+}
+.app-shell .ai-card {
+  background: #101010 !important;
+  border-color: #292929 !important;
+}
+.app-shell .ai-card p, .app-shell .ai-card small { opacity: .65; }
+
+/* Topology */
+.app-shell .topology-canvas, .app-shell .modal-topology,
+.app-shell .topology-canvas .react-flow,
+.app-shell .modal-topology .react-flow,
+.app-shell .react-flow__background {
+  background: #000000 !important;
+}
+.app-shell .react-flow__background pattern path {
+  stroke: #1d1d1d !important;
+}
+.app-shell .react-flow__edge-path,
+.app-shell .react-flow__connection-path {
+  stroke: #ffffff !important;
+  stroke-width: 3.5px !important;
+}
+.app-shell .react-flow__node, .app-shell .react-flow__node *,
+.app-shell .react-flow__handle {
+  color: #ffffff !important;
+}
+.app-shell .react-flow__handle {
+  background: #ffffff !important;
+  border-color: #000000 !important;
+}
+.app-shell .react-flow__controls button {
+  color: #ffffff !important;
+  background: #111111 !important;
+  border-color: #383838 !important;
+}
+.app-shell .react-flow__controls button svg,
+.app-shell .react-flow__controls button svg * {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+.app-shell .react-flow__minimap {
+  background: #080808 !important;
+  border-color: #333333 !important;
+}
+
+/* Charts */
+.app-shell .recharts-text, .app-shell .recharts-legend-item-text,
+.app-shell .recharts-cartesian-axis-tick-value {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
+.app-shell .recharts-cartesian-grid-horizontal line,
+.app-shell .recharts-cartesian-grid-vertical line {
+  stroke: #242424 !important;
+}
+
+/* Reports / analytics */
+.app-shell .report-card, .app-shell .performance-kpi,
+.app-shell .test-results {
+  background: #101010 !important;
+  border-color: #292929 !important;
+  color: #ffffff !important;
+}
+.app-shell .report-card *, .app-shell .performance-kpi *,
+.app-shell .test-results * {
+  color: #ffffff !important;
+}
+
+/* Modal */
+.app-shell .modal-overlay { background: rgba(0,0,0,.90) !important; }
+.app-shell .modal {
+  background: #080808 !important;
+  border-color: #333333 !important;
+}
+.app-shell .modal *, .app-shell .modal-header h2,
+.app-shell .modal-header p, .app-shell .cause-block,
+.app-shell .diagnosis-summary, .app-shell .feedback-box,
+.app-shell .conversation {
+  color: #ffffff !important;
+}
+.app-shell .modal-close {
+  color: #ffffff !important;
+  background: #141414 !important;
+  border-color: #3a3a3a !important;
+}
+
+/* Login */
+.login-page { background: #000000 !important; color: #ffffff !important; }
+.login-box, .login-box * { color: #ffffff !important; }
+.login-box { background: #080808 !important; border-color: #333333 !important; }
+.login-box input {
+  color: #ffffff !important;
+  background: #050505 !important;
+  border-color: #333333 !important;
+}
+
+/* Windows desktop */
+@media (max-width: 1365px) {
+  .app-shell .sidebar {
+    width: 240px !important;
+    min-width: 240px !important;
+  }
+  .app-shell .main-area {
+    width: calc(100vw - 240px) !important;
+    margin-left: 240px !important;
+  }
+}

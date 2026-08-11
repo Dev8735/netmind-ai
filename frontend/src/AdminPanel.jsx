@@ -4,7 +4,7 @@ import { Lock, ArrowLeft } from 'lucide-react';
 import { PipelineFlow, CauseTree } from './DecisionTree';
 import KnowledgeGraph from './KnowledgeGraph';
 
-function AdminPanel() {
+function AdminPanel({ onBack }) {
   const [isVerified, setIsVerified] = useState(!!localStorage.getItem('netmind_admin_verified'));
   const [password, setPassword] = useState('');
   const [verifying, setVerifying] = useState(false);
@@ -15,8 +15,16 @@ function AdminPanel() {
   const [treeData, setTreeData] = useState(null);
   const [graphData, setGraphData] = useState(null);
 
+  // Prefer the onBack callback from the parent (works with any routing
+  // scheme the parent uses - sidebar state, hash routing, etc.).
+  // Falls back to clearing the hash if no callback was provided, for
+  // backward compatibility with the original hash-based App.jsx.
   const goBack = () => {
-    window.location.hash = '';
+    if (onBack) {
+      onBack();
+    } else {
+      window.location.hash = '';
+    }
   };
 
   const handleVerify = async () => {
