@@ -16,6 +16,7 @@ from .report_generator import generate_pdf_report
 from .auth import verify_password, create_access_token, ADMIN_USERNAME
 from .remediation_engine import attempt_remediation, is_auto_remediable
 from .conversation_engine import answer_question
+from .email_alerter import send_alert_email
 
 load_dotenv()
 
@@ -275,9 +276,6 @@ def get_performance_stats():
     helpful_yes = sum(1 for f in feedbacks if f.helpful == "yes")
     overall_accuracy = round((helpful_yes / total) * 100, 1) if total else None
 
-    # Accuracy broken down by the confidence level the diagnosis engine
-    # originally assigned - the most useful stat for judging whether
-    # "high confidence" claims can actually be trusted.
     confidence_buckets = {}
     for f in feedbacks:
         incident = incidents_map.get(f.incident_id)
@@ -298,7 +296,6 @@ def get_performance_stats():
         for level, data in confidence_buckets.items()
     }
 
-    # Accuracy trend by day, so improvements over time are visible.
     daily_buckets = {}
     for f in feedbacks:
         day = f.created_at.strftime("%Y-%m-%d") if f.created_at else "unknown"
@@ -412,10 +409,6 @@ def search_similar_incidents(text: str):
         ]
         match_basis = "fault_type"
     else:
-        # Fallback: no fault_type could be determined for this query text
-        # (either no confident match, or the matched KB entry isn't tagged).
-        # Fall back to matching on category so the search still returns
-        # something useful, clearly labeled as a weaker match basis.
         matched = [
             {
                 "id": i.id,
@@ -555,6 +548,25 @@ def get_incident_alert(incident_id: int):
     return {"alert": alert_text}
 
 
+@app.post("/api/incidents/{incident_id}/send-alert-email")
+def send_incident_alert_email(incident_id: int):
+    """Manually trigger the alert email for an incident. Always returns
+    a status dict (sent via real SMTP, or logged to file with the reason)
+    - never silently claims success."""
+    session = Session()
+    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    session.close()
+    if not incident:
+        return {"error": "Not found"}
+
+    diagnosis = json.loads(incident.diagnosis_json) if incident.diagnosis_json else None
+    alert_text = generate_alert(incident.device_type, incident.incident_description, diagnosis)
+    subject = f"NetMind AI Alert - {incident.priority} - {incident.device_type}"
+
+    result = send_alert_email(subject, alert_text)
+    return result
+
+
 @app.get("/api/incidents/{incident_id}/report")
 def download_report(incident_id: int):
     session = Session()
@@ -581,12 +593,6 @@ def create_incident(payload: IncidentCreate):
     incident_status = "Open"
     remediation_log = None
     if diagnosis["matched"] and diagnosis["confidence"] == "high":
-        # Scan all ranked causes (not just the top one) for the first
-        # cause whose fault_type is on the auto-remediation whitelist.
-        # The top-ranked cause by embedding similarity is not always the
-        # one that matches a remediable fault_type - a near-miss KB entry
-        # (e.g. "port security violation") can outscore the correct
-        # "port_admin_shutdown" entry on wording alone.
         remediable_cause = next(
             (c for c in diagnosis["causes"] if is_auto_remediable(c.get("fault_type", ""))),
             None
@@ -616,12 +622,28 @@ def create_incident(payload: IncidentCreate):
     session.refresh(new_incident)
     session.close()
 
+    # Automatic email alert for High/Critical severity incidents. Wrapped
+    # in try/except so a slow or failing email (network issues, bad
+    # credentials) can never break incident creation itself - the incident
+    # is already safely committed to the DB above this point regardless
+    # of what happens here.
+    email_result = None
+    if diagnosis["severity"] in ("High", "Critical"):
+        try:
+            alert_text = generate_alert(parsed["device"], payload.text, diagnosis)
+            subject = f"NetMind AI Alert - {diagnosis['severity']} - {parsed['device']}"
+            email_result = send_alert_email(subject, alert_text)
+        except Exception as e:
+            print(f"[create_incident] Auto-alert email failed unexpectedly: {e}")
+            email_result = {"sent": False, "method": "file_log", "error": str(e)}
+
     return {
         "id": new_incident.id,
         "message": "Incident created",
         "parsed": parsed,
         "diagnosis": diagnosis,
-        "status": incident_status
+        "status": incident_status,
+        "email_alert": email_result
     }
 
 

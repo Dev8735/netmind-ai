@@ -771,7 +771,7 @@ function App() {
     </>
   );
 
-  const renderAdmin = () => <div className="admin-shell"><AdminPanel /></div>;
+  const renderAdmin = () => <div className="admin-shell"><AdminPanel onBack={() => go('overview')} /></div>;
 
   const renderModal = () => {
     if (!selectedDetail) return null;
