@@ -25,6 +25,14 @@ const SEVERITY_COLORS = {
   Low: '#22c55e'
 };
 
+const TOOLTIP_STYLE = {
+  background: '#0a0a0a',
+  border: '1px solid #333333',
+  borderRadius: 8,
+  fontFamily: '"Times New Roman", Times, serif',
+  color: '#ffffff'
+};
+
 const NAV = [
   ['overview', 'Overview', LayoutDashboard],
   ['incidents', 'Incidents', AlertTriangle],
@@ -489,7 +497,7 @@ function App() {
                   <Pie data={severityData} dataKey="value" nameKey="name" innerRadius={58} outerRadius={82} paddingAngle={3}>
                     {severityData.map((x, i) => <Cell key={i} fill={x.color} stroke="none" />)}
                   </Pie>
-                  <Tooltip contentStyle={{background:'#111a29', border:'1px solid #26344b', borderRadius:8}} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Times New Roman", Times, serif' }} labelStyle={{ fontFamily: '"Times New Roman", Times, serif' }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="severity-legend">
@@ -522,9 +530,9 @@ function App() {
             <ResponsiveContainer width="100%" height={230}>
               <BarChart data={recurringData.slice(0, 6)} layout="vertical" margin={{left:8,right:12}}>
                 <CartesianGrid stroke="#1e2a3d" strokeDasharray="3 3" />
-                <XAxis type="number" stroke="#68778f" tick={{fontSize:10}} />
-                <YAxis type="category" dataKey="label" width={125} stroke="#68778f" tick={{fontSize:10}} />
-                <Tooltip contentStyle={{background:'#111a29', border:'1px solid #26344b', borderRadius:8}} />
+                <XAxis type="number" stroke="#68778f" tick={{fontSize:10, fontFamily: '"Times New Roman", Times, serif'}} />
+                <YAxis type="category" dataKey="label" width={125} stroke="#68778f" tick={{fontSize:10, fontFamily: '"Times New Roman", Times, serif'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Times New Roman", Times, serif' }} labelStyle={{ fontFamily: '"Times New Roman", Times, serif' }} />
                 <Bar dataKey="count" fill="#3b82f6" radius={[0,4,4,0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -715,9 +723,9 @@ function App() {
           <ResponsiveContainer width="100%" height={310}>
             <BarChart data={recurringData} layout="vertical" margin={{left:20,right:20}}>
               <CartesianGrid stroke="#1e2a3d" strokeDasharray="3 3"/>
-              <XAxis type="number" stroke="#68778f"/>
-              <YAxis type="category" dataKey="label" width={190} stroke="#68778f"/>
-              <Tooltip contentStyle={{background:'#111a29',border:'1px solid #26344b',borderRadius:8}}/>
+              <XAxis type="number" stroke="#68778f" tick={{ fontFamily: '"Times New Roman", Times, serif' }}/>
+              <YAxis type="category" dataKey="label" width={190} stroke="#68778f" tick={{ fontFamily: '"Times New Roman", Times, serif' }}/>
+              <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Times New Roman", Times, serif' }} labelStyle={{ fontFamily: '"Times New Roman", Times, serif' }}/>
               <Bar dataKey="count" fill="#3b82f6" radius={[0,5,5,0]}/>
             </BarChart>
           </ResponsiveContainer>
