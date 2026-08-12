@@ -7,7 +7,7 @@ import {
 import {
   Activity, AlertCircle, AlertTriangle, BarChart3, BrainCircuit,
   CheckCircle, ChevronRight, Clock, Copy, Database, FileText,
-  LayoutDashboard, Lock, Network, Radio, RefreshCw, Search,
+  LayoutDashboard, Lock, Mail, Network, Radio, RefreshCw, Search,
   Server, Settings, ShieldCheck, Terminal, Wifi, WifiOff, X, Zap
 } from 'lucide-react';
 
@@ -112,6 +112,9 @@ function App() {
   const [alertText, setAlertText] = useState('');
   const [loadingAlert, setLoadingAlert] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState(null);
 
   const [feedbackGiven, setFeedbackGiven] = useState(false);
   const [showCorrectionForm, setShowCorrectionForm] = useState(false);
@@ -262,6 +265,7 @@ function App() {
       setSelectedDetail(r.data);
       setAlertText('');
       setCopied(false);
+      setEmailResult(null);
       setFeedbackGiven(false);
       setShowCorrectionForm(false);
       setCorrectionChoice('');
@@ -353,6 +357,23 @@ function App() {
     navigator.clipboard.writeText(alertText);
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  };
+
+  const sendAlertEmail = async () => {
+    if (!selectedDetail) return;
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const r = await axios.post(
+        `${API_BASE}/api/incidents/${selectedDetail.id}/send-alert-email`
+      );
+      setEmailResult(r.data);
+    } catch (e) {
+      console.error('send email:', e);
+      setEmailResult({ sent: false, method: 'error', error: 'Request failed - check the backend.' });
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const runSearch = async () => {
@@ -849,7 +870,15 @@ function App() {
           <div className="modal-actions">
             <a href={`${API_BASE}/api/incidents/${d.id}/report`} download><FileText size={14}/> Download PDF Report</a>
             {!alertText ? <button className="secondary-button" onClick={generateAlert} disabled={loadingAlert}><ShieldCheck size={14}/>{loadingAlert?'Generating...':'Generate Admin Alert'}</button> : <div className="alert-output"><pre>{alertText}</pre><button className="secondary-button" onClick={copyAlert}><Copy size={14}/>{copied?'Copied':'Copy Alert'}</button></div>}
+            <button className="secondary-button" onClick={sendAlertEmail} disabled={emailSending}><Mail size={14}/>{emailSending ? 'Sending...' : 'Generate & Send Mail'}</button>
           </div>
+          {emailResult && (
+            <div className="inline-error" style={{ color: emailResult.sent ? '#4ade80' : '#f87171', marginTop: '8px' }}>
+              {emailResult.sent
+                ? '✓ Email sent successfully to the configured recipient.'
+                : `Not emailed (${emailResult.error || 'logged to file instead'}).`}
+            </div>
+          )}
         </div>
       </div>
     );
