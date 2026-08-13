@@ -7,7 +7,7 @@ import {
 import {
   Activity, AlertCircle, AlertTriangle, BarChart3, BrainCircuit,
   CheckCircle, ChevronRight, Clock, Copy, Database, FileText,
-  LayoutDashboard, Lock, Network, Radio, RefreshCw, Search,
+  LayoutDashboard, Lock, Mail, Network, Radio, RefreshCw, Search,
   Server, Settings, ShieldCheck, Terminal, Wifi, WifiOff, X, Zap
 } from 'lucide-react';
 
@@ -17,6 +17,8 @@ import Login from './Login';
 import './App.css';
 
 const API_BASE = 'http://127.0.0.1:8000';
+
+const APP_FONT = '"Manrope", "Segoe UI", Arial, sans-serif';
 
 const SEVERITY_COLORS = {
   Critical: '#ef4444',
@@ -29,7 +31,7 @@ const TOOLTIP_STYLE = {
   background: '#0a0a0a',
   border: '1px solid #333333',
   borderRadius: 8,
-  fontFamily: '"Times New Roman", Times, serif',
+  fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif',
   color: '#ffffff'
 };
 
@@ -110,8 +112,10 @@ function App() {
   const [similarFaultType, setSimilarFaultType] = useState(null);
 
   const [alertText, setAlertText] = useState('');
-  const [loadingAlert, setLoadingAlert] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState(null);
 
   const [feedbackGiven, setFeedbackGiven] = useState(false);
   const [showCorrectionForm, setShowCorrectionForm] = useState(false);
@@ -262,6 +266,8 @@ function App() {
       setSelectedDetail(r.data);
       setAlertText('');
       setCopied(false);
+      setEmailResult(null);
+      setResolveResult(null);
       setFeedbackGiven(false);
       setShowCorrectionForm(false);
       setCorrectionChoice('');
@@ -335,17 +341,36 @@ function App() {
     }
   };
 
-  const generateAlert = async () => {
-    setLoadingAlert(true);
+  const [startingResolve, setStartingResolve] = useState(false);
+  const [resolveResult, setResolveResult] = useState(null);
+
+  const startResolving = async () => {
+    if (!selectedDetail) return;
+    setStartingResolve(true);
+    setResolveResult(null);
     try {
-      const r = await axios.get(
-        `${API_BASE}/api/incidents/${selectedDetail.id}/alert`
+      const r = await axios.post(
+        `${API_BASE}/api/incidents/${selectedDetail.id}/start-resolving`
       );
-      setAlertText(r.data.alert);
+      setResolveResult(r.data);
+      if (r.data.status) {
+        setSelectedDetail(prev => ({
+          ...prev,
+          status: r.data.status,
+          remediation_log: r.data.remediation_log || prev.remediation_log
+        }));
+        setIncidents(prev => prev.map(i =>
+          i.id === selectedDetail.id ? { ...i, status: r.data.status } : i
+        ));
+      }
+      if (r.data.action === 'escalated' && r.data.alert_text) {
+        setAlertText(r.data.alert_text);
+      }
     } catch (e) {
-      console.error('alert:', e);
+      console.error('start resolving:', e);
+      setResolveResult({ action: 'error', message: 'Request failed - check the backend.' });
     } finally {
-      setLoadingAlert(false);
+      setStartingResolve(false);
     }
   };
 
@@ -353,6 +378,23 @@ function App() {
     navigator.clipboard.writeText(alertText);
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  };
+
+  const sendAlertEmail = async () => {
+    if (!selectedDetail) return;
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const r = await axios.post(
+        `${API_BASE}/api/incidents/${selectedDetail.id}/send-alert-email`
+      );
+      setEmailResult(r.data);
+    } catch (e) {
+      console.error('send email:', e);
+      setEmailResult({ sent: false, method: 'error', error: 'Request failed - check the backend.' });
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const runSearch = async () => {
@@ -497,7 +539,7 @@ function App() {
                   <Pie data={severityData} dataKey="value" nameKey="name" innerRadius={58} outerRadius={82} paddingAngle={3}>
                     {severityData.map((x, i) => <Cell key={i} fill={x.color} stroke="none" />)}
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Times New Roman", Times, serif' }} labelStyle={{ fontFamily: '"Times New Roman", Times, serif' }} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif' }} labelStyle={{ fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif' }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="severity-legend">
@@ -530,9 +572,9 @@ function App() {
             <ResponsiveContainer width="100%" height={230}>
               <BarChart data={recurringData.slice(0, 6)} layout="vertical" margin={{left:8,right:12}}>
                 <CartesianGrid stroke="#1e2a3d" strokeDasharray="3 3" />
-                <XAxis type="number" stroke="#68778f" tick={{fontSize:10, fontFamily: '"Times New Roman", Times, serif'}} />
-                <YAxis type="category" dataKey="label" width={125} stroke="#68778f" tick={{fontSize:10, fontFamily: '"Times New Roman", Times, serif'}} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Times New Roman", Times, serif' }} labelStyle={{ fontFamily: '"Times New Roman", Times, serif' }} />
+                <XAxis type="number" stroke="#68778f" tick={{fontSize:10, fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif'}} />
+                <YAxis type="category" dataKey="label" width={125} stroke="#68778f" tick={{fontSize:10, fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif' }} labelStyle={{ fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif' }} />
                 <Bar dataKey="count" fill="#3b82f6" radius={[0,4,4,0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -723,9 +765,9 @@ function App() {
           <ResponsiveContainer width="100%" height={310}>
             <BarChart data={recurringData} layout="vertical" margin={{left:20,right:20}}>
               <CartesianGrid stroke="#1e2a3d" strokeDasharray="3 3"/>
-              <XAxis type="number" stroke="#68778f" tick={{ fontFamily: '"Times New Roman", Times, serif' }}/>
-              <YAxis type="category" dataKey="label" width={190} stroke="#68778f" tick={{ fontFamily: '"Times New Roman", Times, serif' }}/>
-              <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Times New Roman", Times, serif' }} labelStyle={{ fontFamily: '"Times New Roman", Times, serif' }}/>
+              <XAxis type="number" stroke="#68778f" tick={{ fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif' }}/>
+              <YAxis type="category" dataKey="label" width={190} stroke="#68778f" tick={{ fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif' }}/>
+              <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif' }} labelStyle={{ fontFamily: '"Manrope", "Segoe UI", Arial, sans-serif' }}/>
               <Bar dataKey="count" fill="#3b82f6" radius={[0,5,5,0]}/>
             </BarChart>
           </ResponsiveContainer>
@@ -802,8 +844,27 @@ function App() {
 
           <div className="resolve-row">
             <span className={`status-pill ${d.status?.toLowerCase().replace(' ','-')}`}>{d.status === 'Auto-Resolved' ? '⚡ Auto-Resolved' : d.status}</span>
-            {d.status !== 'Resolved' && d.status !== 'Auto-Resolved' && <button className="resolve-button" onClick={resolveIncident} disabled={resolving}>{resolving ? 'Resolving...' : 'Mark Resolved'}</button>}
+            {d.status !== 'Resolved' && d.status !== 'Auto-Resolved' && (
+              <>
+                <button className="resolve-button" onClick={startResolving} disabled={startingResolve}>
+                  {startingResolve ? 'Resolving...' : 'Start Resolving'}
+                </button>
+                <button className="resolve-button" onClick={resolveIncident} disabled={resolving}>{resolving ? 'Resolving...' : 'Mark Resolved'}</button>
+              </>
+            )}
           </div>
+          {resolveResult && (
+            <div className="inline-error" style={{
+              color: resolveResult.action === 'resolved' ? '#4ade80' : resolveResult.action === 'escalated' ? '#fdba74' : '#94a3b8',
+              marginBottom: '12px'
+            }}>
+              {resolveResult.action === 'resolved' && '✓ Automatically resolved - safe config-only fix applied.'}
+              {resolveResult.action === 'escalated' && '⚠ Physical attention required - Admin Alert generated below.'}
+              {resolveResult.action === 'in_progress' && `In Progress - follow steps: ${resolveResult.troubleshooting_steps}`}
+              {resolveResult.action === 'manual_review' && resolveResult.message}
+              {resolveResult.action === 'error' && resolveResult.message}
+            </div>
+          )}
 
           {d.remediation_log && <div className="remediation"><h3><Zap size={14}/> Automated Remediation</h3><p>Safe automated remediation was applied for this known issue.</p><pre>{d.remediation_log}</pre></div>}
 
@@ -848,8 +909,21 @@ function App() {
 
           <div className="modal-actions">
             <a href={`${API_BASE}/api/incidents/${d.id}/report`} download><FileText size={14}/> Download PDF Report</a>
-            {!alertText ? <button className="secondary-button" onClick={generateAlert} disabled={loadingAlert}><ShieldCheck size={14}/>{loadingAlert?'Generating...':'Generate Admin Alert'}</button> : <div className="alert-output"><pre>{alertText}</pre><button className="secondary-button" onClick={copyAlert}><Copy size={14}/>{copied?'Copied':'Copy Alert'}</button></div>}
+            <button className="secondary-button" onClick={sendAlertEmail} disabled={emailSending}><Mail size={14}/>{emailSending ? 'Sending...' : 'Generate & Send Mail'}</button>
           </div>
+          {alertText && (
+            <div className="alert-output" style={{ marginTop: '10px' }}>
+              <pre>{alertText}</pre>
+              <button className="secondary-button" onClick={copyAlert}><Copy size={14}/>{copied?'Copied':'Copy Alert'}</button>
+            </div>
+          )}
+          {emailResult && (
+            <div className="inline-error" style={{ color: emailResult.sent ? '#4ade80' : '#f87171', marginTop: '8px' }}>
+              {emailResult.sent
+                ? '✓ Email sent successfully to the configured recipient.'
+                : `Not emailed (${emailResult.error || 'logged to file instead'}).`}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -870,7 +944,7 @@ function App() {
   }[activeView] || renderOverview;
 
   return (
-    <div className="app-shell dark-theme">
+    <div className="app-shell dark-theme" style={{ fontFamily: APP_FONT }}>
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark"><Server size={19}/></span>

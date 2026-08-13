@@ -481,6 +481,87 @@ def get_similar_incidents(incident_id: int):
     return {"fault_type": fault_type, "similar": similar[:10]}
 
 
+PHYSICAL_ATTENTION_MARKERS = (
+    "physical inspection", "physical cable", "cable", "power cable",
+    "power supply", "psu", "circuit breaker", "hardware", "faulty sfp",
+    "faulty transceiver", "replace"
+)
+
+
+def _requires_physical_attention(cause: dict) -> bool:
+    text = f"{cause.get('verification_command', '')} {cause.get('cause', '')} {cause.get('troubleshooting_steps', '')}".lower()
+    return any(marker in text for marker in PHYSICAL_ATTENTION_MARKERS)
+
+
+@app.post("/api/incidents/{incident_id}/start-resolving")
+def start_resolving(incident_id: int):
+    """Engineer-triggered resolution attempt. Three possible outcomes:
+    1. Safe, whitelisted fault type -> auto-remediated immediately (same
+       whitelist as automatic remediation at incident creation).
+    2. Top cause requires physical intervention (cable, PSU, hardware) ->
+       cannot be resolved remotely, so an Admin Alert is auto-generated
+       to flag it for someone with physical access.
+    3. Otherwise -> marked In Progress, troubleshooting steps returned
+       for the engineer to follow manually."""
+    session = Session()
+    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        session.close()
+        return {"error": "Not found"}
+
+    diagnosis = json.loads(incident.diagnosis_json) if incident.diagnosis_json else None
+    top_cause = None
+    if diagnosis and diagnosis.get("matched") and diagnosis.get("causes"):
+        top_cause = diagnosis["causes"][0]
+
+    if not top_cause:
+        session.close()
+        return {
+            "action": "manual_review",
+            "message": "No confident diagnosis available - this requires manual investigation from scratch."
+        }
+
+    fault_type = top_cause.get("fault_type", "")
+
+    # Outcome 1: safe, whitelisted, config-only fix.
+    if is_auto_remediable(fault_type):
+        remediation = attempt_remediation(fault_type, top_cause["verification_command"])
+        if remediation:
+            incident.status = "Auto-Resolved"
+            incident.remediation_log = remediation["log"]
+            session.commit()
+            session.close()
+            return {
+                "action": "resolved",
+                "status": "Auto-Resolved",
+                "remediation_log": remediation["log"]
+            }
+
+    # Outcome 2: needs a human with physical access - auto-generate the alert.
+    if _requires_physical_attention(top_cause):
+        alert_text = generate_alert(incident.device_type, incident.incident_description, diagnosis)
+        incident.status = "Escalated - Physical Attention Required"
+        session.commit()
+        session.close()
+        return {
+            "action": "escalated",
+            "status": "Escalated - Physical Attention Required",
+            "alert_text": alert_text
+        }
+
+    # Outcome 3: neither auto-fixable nor physical - engineer follows the steps.
+    incident.status = "In Progress"
+    session.commit()
+    session.close()
+    return {
+        "action": "in_progress",
+        "status": "In Progress",
+        "cause": top_cause["cause"],
+        "verification_command": top_cause["verification_command"],
+        "troubleshooting_steps": top_cause["troubleshooting_steps"]
+    }
+
+
 @app.post("/api/incidents/{incident_id}/resolve")
 def resolve_incident(incident_id: int):
     session = Session()
