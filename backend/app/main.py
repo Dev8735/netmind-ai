@@ -493,6 +493,57 @@ def _requires_physical_attention(cause: dict) -> bool:
     return any(marker in text for marker in PHYSICAL_ATTENTION_MARKERS)
 
 
+def _attempt_resolution(incident, diagnosis):
+    """Shared resolution logic used by both the manual 'Start Resolving'
+    button and automatic handling of Critical incidents at creation time.
+    Mutates incident.status/remediation_log directly but does NOT commit
+    or close the session - caller owns the transaction. Returns a result
+    dict describing what happened."""
+    top_cause = None
+    if diagnosis and diagnosis.get("matched") and diagnosis.get("causes"):
+        top_cause = diagnosis["causes"][0]
+
+    if not top_cause:
+        return {
+            "action": "manual_review",
+            "message": "No confident diagnosis available - this requires manual investigation from scratch."
+        }
+
+    fault_type = top_cause.get("fault_type", "")
+
+    # Outcome 1: safe, whitelisted, config-only fix.
+    if is_auto_remediable(fault_type):
+        remediation = attempt_remediation(fault_type, top_cause["verification_command"])
+        if remediation:
+            incident.status = "Auto-Resolved"
+            incident.remediation_log = remediation["log"]
+            return {
+                "action": "resolved",
+                "status": "Auto-Resolved",
+                "remediation_log": remediation["log"]
+            }
+
+    # Outcome 2: needs a human with physical access - auto-generate the alert.
+    if _requires_physical_attention(top_cause):
+        alert_text = generate_alert(incident.device_type, incident.incident_description, diagnosis)
+        incident.status = "Escalated - Physical Attention Required"
+        return {
+            "action": "escalated",
+            "status": "Escalated - Physical Attention Required",
+            "alert_text": alert_text
+        }
+
+    # Outcome 3: neither auto-fixable nor physical - engineer follows the steps.
+    incident.status = "In Progress"
+    return {
+        "action": "in_progress",
+        "status": "In Progress",
+        "cause": top_cause["cause"],
+        "verification_command": top_cause["verification_command"],
+        "troubleshooting_steps": top_cause["troubleshooting_steps"]
+    }
+
+
 @app.post("/api/incidents/{incident_id}/start-resolving")
 def start_resolving(incident_id: int):
     """Engineer-triggered resolution attempt. Three possible outcomes:
@@ -510,56 +561,10 @@ def start_resolving(incident_id: int):
         return {"error": "Not found"}
 
     diagnosis = json.loads(incident.diagnosis_json) if incident.diagnosis_json else None
-    top_cause = None
-    if diagnosis and diagnosis.get("matched") and diagnosis.get("causes"):
-        top_cause = diagnosis["causes"][0]
-
-    if not top_cause:
-        session.close()
-        return {
-            "action": "manual_review",
-            "message": "No confident diagnosis available - this requires manual investigation from scratch."
-        }
-
-    fault_type = top_cause.get("fault_type", "")
-
-    # Outcome 1: safe, whitelisted, config-only fix.
-    if is_auto_remediable(fault_type):
-        remediation = attempt_remediation(fault_type, top_cause["verification_command"])
-        if remediation:
-            incident.status = "Auto-Resolved"
-            incident.remediation_log = remediation["log"]
-            session.commit()
-            session.close()
-            return {
-                "action": "resolved",
-                "status": "Auto-Resolved",
-                "remediation_log": remediation["log"]
-            }
-
-    # Outcome 2: needs a human with physical access - auto-generate the alert.
-    if _requires_physical_attention(top_cause):
-        alert_text = generate_alert(incident.device_type, incident.incident_description, diagnosis)
-        incident.status = "Escalated - Physical Attention Required"
-        session.commit()
-        session.close()
-        return {
-            "action": "escalated",
-            "status": "Escalated - Physical Attention Required",
-            "alert_text": alert_text
-        }
-
-    # Outcome 3: neither auto-fixable nor physical - engineer follows the steps.
-    incident.status = "In Progress"
+    result = _attempt_resolution(incident, diagnosis)
     session.commit()
     session.close()
-    return {
-        "action": "in_progress",
-        "status": "In Progress",
-        "cause": top_cause["cause"],
-        "verification_command": top_cause["verification_command"],
-        "troubleshooting_steps": top_cause["troubleshooting_steps"]
-    }
+    return result
 
 
 @app.post("/api/incidents/{incident_id}/resolve")
@@ -701,17 +706,34 @@ def create_incident(payload: IncidentCreate):
     session.add(new_incident)
     session.commit()
     session.refresh(new_incident)
+
+    # For Critical incidents that weren't already auto-resolved above
+    # (e.g. medium/low confidence, or a fault_type not on the safe
+    # whitelist), run the same resolution logic as the manual "Start
+    # Resolving" button - Critical incidents don't wait for an engineer
+    # to click a button before at least attempting resolution/escalation.
+    resolution_result = None
+    if diagnosis["severity"] == "Critical" and new_incident.status == "Open":
+        resolution_result = _attempt_resolution(new_incident, diagnosis)
+        session.commit()
+
+    incident_status = new_incident.status
     session.close()
 
     # Automatic email alert for High/Critical severity incidents. Wrapped
     # in try/except so a slow or failing email (network issues, bad
     # credentials) can never break incident creation itself - the incident
     # is already safely committed to the DB above this point regardless
-    # of what happens here.
+    # of what happens here. For Critical incidents that were escalated
+    # above, the more specific escalation alert is emailed instead of
+    # the generic one, since it's more urgent and actionable.
     email_result = None
     if diagnosis["severity"] in ("High", "Critical"):
         try:
-            alert_text = generate_alert(parsed["device"], payload.text, diagnosis)
+            if resolution_result and resolution_result.get("action") == "escalated":
+                alert_text = resolution_result["alert_text"]
+            else:
+                alert_text = generate_alert(parsed["device"], payload.text, diagnosis)
             subject = f"NetMind AI Alert - {diagnosis['severity']} - {parsed['device']}"
             email_result = send_alert_email(subject, alert_text)
         except Exception as e:
@@ -724,7 +746,8 @@ def create_incident(payload: IncidentCreate):
         "parsed": parsed,
         "diagnosis": diagnosis,
         "status": incident_status,
-        "email_alert": email_result
+        "email_alert": email_result,
+        "auto_resolution": resolution_result
     }
 
 

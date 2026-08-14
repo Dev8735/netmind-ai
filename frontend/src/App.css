@@ -583,10 +583,12 @@ textarea:focus, input:focus, select:focus {
 
 .topology-panel { min-height: 720px; background: #080808; }
 .topology-canvas {
-  height: 630px;
+  position: relative !important;
+  height: 630px !important;
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: hidden !important;
+  isolation: isolate;
   background: #000000;
   border: 1px solid #303030;
   border-radius: 7px;
@@ -752,4 +754,183 @@ textarea:focus, input:focus, select:focus {
   .content { padding-left: 42px; padding-right: 42px; }
   .dashboard-grid { gap: 22px; }
   .stat-grid { gap: 19px; }
+}
+
+/* =========================================================
+   TOPOLOGY CONTROLS - FINAL
+   ========================================================= */
+
+.topology-canvas .react-flow {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Control container */
+.topology-canvas .react-flow__controls {
+  position: absolute !important;
+  top: 14px !important;
+  left: 14px !important;
+  right: auto !important;
+  bottom: auto !important;
+
+  z-index: 99999 !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+
+  width: 42px !important;
+  height: auto !important;
+  min-height: 126px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  overflow: visible !important;
+
+  background: #111111 !important;
+  border: 1px solid #444444 !important;
+  border-radius: 7px !important;
+
+  box-shadow: 0 5px 18px rgba(0,0,0,.65) !important;
+}
+
+/* Every ReactFlow control button */
+.topology-canvas .react-flow__controls > button {
+  position: relative !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  flex: 0 0 42px !important;
+
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  opacity: 1 !important;
+  visibility: visible !important;
+
+  color: #ffffff !important;
+  background: #111111 !important;
+
+  border: 0 !important;
+  border-bottom: 1px solid #444444 !important;
+
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+.topology-canvas .react-flow__controls > button:last-child {
+  border-bottom: 0 !important;
+}
+
+.topology-canvas .react-flow__controls > button:hover {
+  background: #252525 !important;
+}
+
+.topology-canvas .react-flow__controls > button:active {
+  background: #333333 !important;
+}
+
+/* ReactFlow SVG icons */
+.topology-canvas .react-flow__controls > button svg {
+  display: block !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+}
+
+.topology-canvas .react-flow__controls > button svg,
+.topology-canvas .react-flow__controls > button svg *,
+.topology-canvas .react-flow__controls > button path {
+  color: #ffffff !important;
+  fill: none !important;
+  stroke: #ffffff !important;
+  stroke-width: 2 !important;
+}
+
+/* Keep controls above nodes/edges/background */
+.topology-canvas .react-flow__controls,
+.topology-canvas .react-flow__controls *,
+.topology-canvas .react-flow__controls > button {
+  pointer-events: auto !important;
+}
+
+/* Same fix for topology shown inside the incident modal */
+.modal-topology {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.modal-topology .react-flow__controls {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: 99999 !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+
+  width: 42px !important;
+  height: auto !important;
+  min-height: 126px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  overflow: visible !important;
+
+  background: #111111 !important;
+  border: 1px solid #444444 !important;
+  border-radius: 7px !important;
+}
+
+.modal-topology .react-flow__controls > button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  flex: 0 0 42px !important;
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  min-height: 42px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  visibility: visible !important;
+  opacity: 1 !important;
+
+  color: #fff !important;
+  background: #111 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #444 !important;
+}
+
+.modal-topology .react-flow__controls > button:last-child {
+  border-bottom: 0 !important;
+}
+
+.modal-topology .react-flow__controls > button svg,
+.modal-topology .react-flow__controls > button svg * {
+  width: 20px !important;
+  height: 20px !important;
+  color: #fff !important;
+  fill: none !important;
+  stroke: #fff !important;
 }
