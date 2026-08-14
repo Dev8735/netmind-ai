@@ -719,7 +719,12 @@ function App() {
       </div>
       <section className="panel topology-panel">
         <SectionHeader icon={Network} title="Network Map" subtitle="Use incident details to highlight an affected device." />
-        <div className="topology-canvas"><Topology /></div>
+        <div className="topology-canvas">
+              <Topology
+                signals={signals}
+                incidents={incidents}
+              />
+            </div>
       </section>
     </>
   );
@@ -870,7 +875,13 @@ function App() {
 
           <div className="modal-section">
             <SectionHeader icon={Network} title="Network Topology" subtitle="Affected device context."/>
-            <div className="modal-topology"><Topology affectedDevice={d.device}/></div>
+            <div className="modal-topology">
+                <Topology
+                  affectedDevice={d.device}
+                  signals={signals}
+                  incidents={incidents}
+                />
+              </div>
           </div>
 
           {similarIncidents.length > 0 && <div className="modal-section">
